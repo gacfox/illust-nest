@@ -1,0 +1,20 @@
+import api from "@/services/api";
+import type {
+  ApiResponse,
+  SystemStatus,
+  InitRequest,
+  SystemSettings,
+} from "@/types/api";
+
+export const systemService = {
+  getStatus: () => api.get<ApiResponse<SystemStatus>>("/api/system/status"),
+
+  init: (data: InitRequest) =>
+    api.post<ApiResponse<void>>("/api/system/init", data),
+
+  getSettings: () =>
+    api.get<ApiResponse<SystemSettings>>("/api/system/settings"),
+
+  updateSettings: (data: Partial<SystemSettings>) =>
+    api.put<ApiResponse<void>>("/api/system/settings", data),
+};

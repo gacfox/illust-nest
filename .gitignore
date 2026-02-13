@@ -1,0 +1,54 @@
+# Binaries
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Data
+/data/
+*.db
+*.db-shm
+*.db-wal
+
+# Uploads
+data/uploads/*.jpg
+data/uploads/*.jpeg
+data/uploads/*.png
+data/uploads/*.gif
+data/uploads/*.webp
+
+# Logs
+*.log
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Frontend
+web/
+frontend/node_modules/
+frontend/dist/
+
+# AI
+AGENTS*.md
+CLAUDE*.md
+GEMINI*.md
+QWEN*.md
+.cursorrules
+.windsurfrules
+CODEX*.md
+.claude/
+.gemini/
+.cursor/
+.windsurf/
+.clinerules/
+.ai/
+.vibecache/

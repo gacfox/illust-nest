@@ -1,0 +1,23 @@
+server:
+  port: 8080
+  mode: debug
+
+database:
+  driver: sqlite
+  path: ./data/illust-nest.db
+
+jwt:
+  secret: dev-secret-key-change-in-production
+  expire_hours: 168
+
+upload:
+  max_file_size: 20
+  allowed_formats:
+    - image/jpeg
+    - image/png
+    - image/gif
+    - image/webp
+
+thumbnail:
+  max_width: 400
+  quality: 85
