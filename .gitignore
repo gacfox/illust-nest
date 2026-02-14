@@ -23,6 +23,7 @@ data/uploads/*.webp
 
 # Editor
 .vscode/
+.VSCodeCounter
 .idea/
 *.swp
 *.swo
