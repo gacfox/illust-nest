@@ -1,10 +1,12 @@
 # Illust Nest
 
-轻量级的插画和照片图库管理系统，适合部署在树莓派、NAS或云主机上。
+轻量级、自托管的插画和照片图库管理系统，适合部署在树莓派、NAS或云主机上。
+
+![截图](doc/1.webp)
 
 ## 核心特性
 
-- 作品管理：图片上传、编辑信息、图片预览、维护标签与评分
+- 作品管理：图片上传、编辑作品信息、类似Pixiv的图片预览、维护标签与评分
 - 作品集管理：将作品整合为作品集维度管理
 - 标签管理：支持标签管理和为作品附加标签
 - 公开访问：
@@ -50,14 +52,14 @@ cd frontend && npm install && npm run build
 ### 2) 启动服务端
 
 ```bash
-set GIN_MODE=release && go build -o ./bin/main ./cmd/server/ && ./bin/main
+GIN_MODE=release go build -o ./bin/main ./cmd/server/ && ./bin/main
 ```
 
 部署模式下，服务端会直接提供前端静态资源，并自动处理SPA路由回退，访问`8080`即可打开页面。
 
 ## 配置说明
 
-配置文件根据环境变量设置加载，`GIN_MODE=release`时默认加载`config/config.prod.yaml`，否则默认加载`config/config.dev.yaml`。此外也可以可通过环境变量`CONFIG_FILE`指定自定义配置文件路径。
+配置文件根据环境变量设置加载，`GIN_MODE=release`时默认加载`config/config.prod.yaml`，否则默认加载`config/config.dev.yaml`。此外也可通过环境变量`CONFIG_FILE`指定自定义配置文件路径。
 
 ### 配置项示例
 
@@ -79,7 +81,7 @@ web:
 
 ## 公开（匿名）访问接口
 
-作品可以设置为公开模式，设置为公开的作品可通过公开接口访问。
+作品可以标记为“公开”，公开的作品可通过公开接口跳过鉴权匿名访问，用于嵌入博客或外部平台。
 
 - 作品列表：`GET /api/public/works`
 - 作品详情：`GET /api/public/works/:id`
