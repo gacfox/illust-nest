@@ -8,6 +8,8 @@ import (
 	"illust-nest/internal/repository"
 	"illust-nest/internal/service"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -114,6 +116,8 @@ func Setup() *gin.Engine {
 		images.GET("/thumbnails/*filepath", serveThumbnailImage)
 	}
 
+	r.NoRoute(serveFrontend)
+
 	return r
 }
 
@@ -180,4 +184,47 @@ func serveImage(c *gin.Context, fullPath string) {
 
 	c.FileAttachment(fullPath, "")
 	c.Header("Cache-Control", "max-age=31536000")
+}
+
+func serveFrontend(c *gin.Context) {
+	if strings.HasPrefix(c.Request.URL.Path, "/api/") {
+		handler.NotFound(c)
+		return
+	}
+
+	staticRoot := strings.TrimSpace(config.GlobalConfig.Web.StaticDir)
+	if staticRoot == "" {
+		staticRoot = "./frontend/dist"
+	}
+
+	staticRootAbs, err := filepath.Abs(staticRoot)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "invalid web static directory")
+		return
+	}
+
+	requestPath := strings.TrimPrefix(c.Request.URL.Path, "/")
+	requestPath = filepath.Clean(requestPath)
+	if requestPath == "." || requestPath == string(filepath.Separator) {
+		requestPath = ""
+	}
+
+	if requestPath != "" {
+		candidate := filepath.Join(staticRootAbs, requestPath)
+		candidateAbs, absErr := filepath.Abs(candidate)
+		if absErr == nil &&
+			(candidateAbs == staticRootAbs || strings.HasPrefix(candidateAbs, staticRootAbs+string(os.PathSeparator))) {
+			if stat, statErr := os.Stat(candidateAbs); statErr == nil && !stat.IsDir() {
+				c.File(candidateAbs)
+				return
+			}
+		}
+	}
+
+	indexPath := filepath.Join(staticRootAbs, "index.html")
+	if _, statErr := os.Stat(indexPath); statErr != nil {
+		c.String(http.StatusNotFound, "frontend index not found")
+		return
+	}
+	c.File(indexPath)
 }

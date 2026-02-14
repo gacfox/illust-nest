@@ -13,6 +13,7 @@ type Config struct {
 	JWT       JWTConfig       `yaml:"jwt"`
 	Upload    UploadConfig    `yaml:"upload"`
 	Thumbnail ThumbnailConfig `yaml:"thumbnail"`
+	Web       WebConfig       `yaml:"web"`
 }
 
 type ServerConfig struct {
@@ -40,6 +41,10 @@ type ThumbnailConfig struct {
 	Quality  int `yaml:"quality"`
 }
 
+type WebConfig struct {
+	StaticDir string `yaml:"static_dir"`
+}
+
 var GlobalConfig Config
 
 func Load(configPath string) error {
@@ -50,6 +55,10 @@ func Load(configPath string) error {
 
 	if err := yaml.Unmarshal(data, &GlobalConfig); err != nil {
 		return fmt.Errorf("failed to parse config file: %w", err)
+	}
+
+	if GlobalConfig.Web.StaticDir == "" {
+		GlobalConfig.Web.StaticDir = "./frontend/dist"
 	}
 
 	return nil

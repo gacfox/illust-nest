@@ -21,3 +21,6 @@ upload:
 thumbnail:
   max_width: 400
   quality: 85
+
+web:
+  static_dir: ./frontend/dist
