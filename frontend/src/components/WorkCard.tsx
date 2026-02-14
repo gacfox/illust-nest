@@ -10,6 +10,7 @@ type WorkCardProps = {
   onPreview: () => void;
   topLeftOverlay?: ReactNode;
   bottomLeftOverlay?: ReactNode;
+  showPublicBadge?: boolean;
 };
 
 export function WorkCard({
@@ -17,6 +18,7 @@ export function WorkCard({
   onPreview,
   topLeftOverlay,
   bottomLeftOverlay,
+  showPublicBadge = false,
 }: WorkCardProps) {
   const tagNames = work.tags?.map((tag) => tag.name) ?? [];
   const adultBadge = tagNames.includes("R18G")
@@ -54,11 +56,18 @@ export function WorkCard({
           </div>
         )}
 
-        {adultBadge && (
-          <div className="absolute top-2 right-2">
-            <Badge className="bg-pink-500 text-white hover:bg-pink-500/90">
-              {adultBadge}
-            </Badge>
+        {(adultBadge || (showPublicBadge && work.is_public)) && (
+          <div className="absolute top-2 right-2 flex items-center gap-1.5">
+            {showPublicBadge && work.is_public && (
+              <Badge className="border-0 bg-black/55 text-white hover:bg-black/65">
+                公开
+              </Badge>
+            )}
+            {adultBadge && (
+              <Badge className="bg-pink-500 text-white hover:bg-pink-500/90">
+                {adultBadge}
+              </Badge>
+            )}
           </div>
         )}
 

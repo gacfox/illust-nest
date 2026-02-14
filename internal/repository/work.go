@@ -289,3 +289,21 @@ func (r *WorkRepository) FindAllForExport() ([]model.Work, error) {
 		Find(&works).Error
 	return works, err
 }
+
+func (r *WorkRepository) IsPublicImagePath(path string, isThumbnail bool) (bool, error) {
+	column := "work_images.storage_path"
+	if isThumbnail {
+		column = "work_images.thumbnail_path"
+	}
+
+	var count int64
+	err := r.DB.Model(&model.WorkImage{}).
+		Joins("JOIN works ON works.id = work_images.work_id").
+		Where("works.is_public = ?", true).
+		Where(column+" = ?", path).
+		Count(&count).Error
+	if err != nil {
+		return false, err
+	}
+	return count > 0, nil
+}

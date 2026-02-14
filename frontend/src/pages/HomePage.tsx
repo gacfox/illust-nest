@@ -7,6 +7,7 @@ import { WorkCard } from "@/components/WorkCard";
 import { useAuthStore } from "@/stores";
 import {
   Plus,
+  ListChecks,
   SlidersHorizontal,
   X,
   ArrowDown,
@@ -54,6 +55,7 @@ export function HomePage() {
   const [sortBy, setSortBy] = useState("created_at");
   const [sortOrder, setSortOrder] = useState("desc");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [batchPanelOpen, setBatchPanelOpen] = useState(false);
   const [deleteWorkId, setDeleteWorkId] = useState<number | null>(null);
   const [deletingSingle, setDeletingSingle] = useState(false);
   const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
@@ -224,8 +226,6 @@ export function HomePage() {
     navigate("/login");
   };
 
-  const hasSelection = selectedIds.length > 0;
-
   const filteredTagCount = useMemo(
     () => selectedTagIds.length,
     [selectedTagIds],
@@ -278,6 +278,20 @@ export function HomePage() {
                   {filteredTagCount}
                 </span>
               )}
+            </Button>
+            <Button
+              variant={batchPanelOpen ? "default" : "outline"}
+              onClick={() => {
+                const next = !batchPanelOpen;
+                setBatchPanelOpen(next);
+                if (!next) {
+                  setSelectedIds([]);
+                }
+              }}
+              className="inline-flex items-center gap-2"
+            >
+              <ListChecks className="h-4 w-4" />
+              批量
             </Button>
           </div>
           <div className="flex items-center gap-2">
@@ -416,15 +430,32 @@ export function HomePage() {
           </div>
         )}
 
-        {hasSelection && (
+        {batchPanelOpen && (
           <div className="bg-card border border-border rounded-lg p-3 flex flex-wrap items-center gap-3 text-sm">
             <span className="text-muted-foreground">
               已选 {selectedIds.length} 项
             </span>
             <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedIds(works.map((item) => item.id))}
+              disabled={works.length === 0}
+            >
+              全选当前页
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSelectedIds([])}
+              disabled={selectedIds.length === 0}
+            >
+              清空选择
+            </Button>
+            <Button
               variant="destructive"
               size="sm"
               onClick={() => setBatchDeleteOpen(true)}
+              disabled={selectedIds.length === 0}
             >
               批量删除
             </Button>
@@ -432,6 +463,7 @@ export function HomePage() {
               variant="outline"
               size="sm"
               onClick={() => handleBatchPublic(true)}
+              disabled={selectedIds.length === 0}
             >
               设为公开
             </Button>
@@ -439,8 +471,19 @@ export function HomePage() {
               variant="outline"
               size="sm"
               onClick={() => handleBatchPublic(false)}
+              disabled={selectedIds.length === 0}
             >
               设为私密
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setBatchPanelOpen(false);
+                setSelectedIds([]);
+              }}
+            >
+              收起
             </Button>
           </div>
         )}
@@ -462,13 +505,16 @@ export function HomePage() {
               <WorkCard
                 key={work.id}
                 work={work}
+                showPublicBadge
                 onPreview={() => navigate(`/works/${work.id}/preview`)}
                 topLeftOverlay={
-                  <Checkbox
-                    checked={selectedIds.includes(work.id)}
-                    onCheckedChange={() => toggleSelect(work.id)}
-                    className="bg-background border-border"
-                  />
+                  batchPanelOpen ? (
+                    <Checkbox
+                      checked={selectedIds.includes(work.id)}
+                      onCheckedChange={() => toggleSelect(work.id)}
+                      className="bg-background border-border"
+                    />
+                  ) : undefined
                 }
                 bottomLeftOverlay={
                   <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

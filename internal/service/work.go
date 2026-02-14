@@ -79,6 +79,24 @@ func (s *WorkService) GetWorkByID(id uint) (*WorkInfo, error) {
 	return s.workToInfo(work, true), nil
 }
 
+func (s *WorkService) GetPublicWorks(params *WorkListParams) (*WorkPagedResult, error) {
+	public := true
+	params.IsPublic = &public
+	return s.GetWorks(params)
+}
+
+func (s *WorkService) GetPublicWorkByID(id uint) (*WorkInfo, error) {
+	work, err := s.workRepo.FindByID(id, true)
+	if err != nil || !work.IsPublic {
+		return nil, errors.New("work not found")
+	}
+	return s.workToInfo(work, true), nil
+}
+
+func (s *WorkService) IsPublicImagePath(path string, isThumbnail bool) (bool, error) {
+	return s.workRepo.IsPublicImagePath(path, isThumbnail)
+}
+
 func (s *WorkService) CreateWork(req *CreateWorkRequest, uploadedImages []*UploadedImage) (*WorkInfo, error) {
 	if len(uploadedImages) == 0 {
 		return nil, errors.New("at least one image is required")

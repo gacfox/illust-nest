@@ -24,6 +24,7 @@ func Setup() *gin.Engine {
 	authHandler := setupAuth()
 	systemHandler := setupSystem()
 	workHandler := setupWork()
+	publicHandler := setupPublic()
 	tagHandler := setupTag()
 	collectionHandler := setupCollection()
 
@@ -45,6 +46,21 @@ func Setup() *gin.Engine {
 		auth.GET("/me", middleware.Auth(), authHandler.Me)
 		auth.PUT("/password", middleware.Auth(), authHandler.ChangePassword)
 		auth.POST("/refresh", middleware.Auth(), authHandler.RefreshToken)
+	}
+
+	public := r.Group("/api/public")
+	{
+		publicWorks := public.Group("/works")
+		{
+			publicWorks.GET("", publicHandler.ListWorks)
+			publicWorks.GET("/:id", publicHandler.GetWork)
+		}
+
+		publicImages := public.Group("/images")
+		{
+			publicImages.GET("/originals/*filepath", publicHandler.GetOriginalImage)
+			publicImages.GET("/thumbnails/*filepath", publicHandler.GetThumbnailImage)
+		}
 	}
 
 	api := r.Group("/api")
@@ -121,6 +137,14 @@ func setupWork() *handler.WorkHandler {
 	imageService := service.NewImageService()
 	workService := service.NewWorkService(workRepo, tagRepo, imageService)
 	return handler.NewWorkHandler(workService, imageService)
+}
+
+func setupPublic() *handler.PublicHandler {
+	workRepo := repository.NewWorkRepository(database.DB)
+	tagRepo := repository.NewTagRepository(database.DB)
+	imageService := service.NewImageService()
+	workService := service.NewWorkService(workRepo, tagRepo, imageService)
+	return handler.NewPublicHandler(workService)
 }
 
 func setupTag() *handler.TagHandler {

@@ -341,7 +341,7 @@ func (h *WorkHandler) UpdateImageOrder(c *gin.Context) {
 
 type BatchUpdatePublicRequest struct {
 	IDs      []uint `json:"ids" binding:"required,min=1"`
-	IsPublic bool   `json:"is_public" binding:"required"`
+	IsPublic *bool  `json:"is_public" binding:"required"`
 }
 
 type BatchUpdatePublicResponse struct {
@@ -354,8 +354,12 @@ func (h *WorkHandler) BatchUpdatePublic(c *gin.Context) {
 		BadRequest(c, err.Error())
 		return
 	}
+	if req.IsPublic == nil {
+		BadRequest(c, "is_public is required")
+		return
+	}
 
-	count, err := h.workService.BatchUpdatePublicStatus(req.IDs, req.IsPublic)
+	count, err := h.workService.BatchUpdatePublicStatus(req.IDs, *req.IsPublic)
 	if err != nil {
 		InternalError(c)
 		return

@@ -26,12 +26,13 @@ export const workService = {
 
   batchDelete: (ids: number[]) =>
     api.delete<ApiResponse<void>>("/api/works/batch", {
-      params: { ids: ids.join(",") },
+      data: { ids },
     }),
 
   batchUpdatePublic: (ids: number[], isPublic: boolean) =>
-    api.put<ApiResponse<void>>("/api/works/batch/public", null, {
-      params: { ids: ids.join(","), is_public: isPublic },
+    api.put<ApiResponse<void>>("/api/works/batch/public", {
+      ids,
+      is_public: isPublic,
     }),
 
   addImages: (id: number, formData: FormData) =>

@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { CircleHelp } from "lucide-react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { tagService, workService } from "@/services";
 import type { Image, Tag, Work } from "@/types/api";
 import { useAuthStore } from "@/stores";
@@ -570,6 +577,24 @@ export function WorkEditPage() {
               <label htmlFor="publicSwitch" className="text-sm text-foreground">
                 公开展示
               </label>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-5 w-5 rounded-full text-muted-foreground"
+                      aria-label="公开展示说明"
+                    >
+                      <CircleHelp className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" sideOffset={6}>
+                    勾选后可通过公开接口访问该作品图片，便于外部页面嵌入展示。
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <div className="flex gap-3">
               <Button

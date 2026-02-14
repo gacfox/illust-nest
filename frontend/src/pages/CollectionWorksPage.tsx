@@ -162,6 +162,7 @@ export function CollectionWorksPage() {
                 <WorkCard
                   key={work.id}
                   work={work}
+                  showPublicBadge
                   onPreview={() =>
                     navigate(`/works/${work.id}/preview`, {
                       state: {
