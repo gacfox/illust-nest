@@ -278,11 +278,14 @@ func (r *WorkRepository) Count() (int64, error) {
 	return count, err
 }
 
-func (r *WorkRepository) FindAllImages() ([]model.WorkImage, error) {
-	var images []model.WorkImage
-	err := r.DB.Model(&model.WorkImage{}).
-		Select("storage_path, created_at").
-		Order("created_at ASC").
-		Find(&images).Error
-	return images, err
+func (r *WorkRepository) FindAllForExport() ([]model.Work, error) {
+	var works []model.Work
+	err := r.DB.Model(&model.Work{}).
+		Order("works.created_at ASC, works.id ASC").
+		Preload("Images", func(db *gorm.DB) *gorm.DB {
+			return db.Order("sort_order ASC")
+		}).
+		Preload("Tags").
+		Find(&works).Error
+	return works, err
 }

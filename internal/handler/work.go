@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/xuri/excelize/v2"
 )
 
 type WorkHandler struct {
@@ -364,7 +365,7 @@ func (h *WorkHandler) BatchUpdatePublic(c *gin.Context) {
 }
 
 func (h *WorkHandler) ExportImages(c *gin.Context) {
-	paths, err := h.workService.ListExportImagePaths()
+	records, err := h.workService.ListExportImages()
 	if err != nil {
 		InternalError(c)
 		return
@@ -384,9 +385,9 @@ func (h *WorkHandler) ExportImages(c *gin.Context) {
 		return
 	}
 
-	added := make(map[string]struct{}, len(paths))
-	for _, storagePath := range paths {
-		cleanPath := filepath.Clean(storagePath)
+	added := make(map[string]struct{}, len(records))
+	for _, record := range records {
+		cleanPath := filepath.Clean(record.Path)
 		if cleanPath == "." || cleanPath == "" || strings.HasPrefix(cleanPath, "..") {
 			continue
 		}
@@ -418,4 +419,53 @@ func (h *WorkHandler) ExportImages(c *gin.Context) {
 		file.Close()
 		added[fullPathAbs] = struct{}{}
 	}
+
+	indexFile := excelize.NewFile()
+	defer indexFile.Close()
+
+	sheetName := "索引"
+	defaultSheet := indexFile.GetSheetName(indexFile.GetActiveSheetIndex())
+	if defaultSheet != sheetName {
+		indexFile.SetSheetName(defaultSheet, sheetName)
+	}
+
+	headers := []string{"路径", "标题", "描述", "标签", "评分", "创建时间"}
+	for idx, header := range headers {
+		cell, _ := excelize.CoordinatesToCellName(idx+1, 1)
+		_ = indexFile.SetCellValue(sheetName, cell, header)
+	}
+
+	for rowIndex, record := range records {
+		row := rowIndex + 2
+		pathCell, _ := excelize.CoordinatesToCellName(1, row)
+		titleCell, _ := excelize.CoordinatesToCellName(2, row)
+		descCell, _ := excelize.CoordinatesToCellName(3, row)
+		tagsCell, _ := excelize.CoordinatesToCellName(4, row)
+		ratingCell, _ := excelize.CoordinatesToCellName(5, row)
+		createdAtCell, _ := excelize.CoordinatesToCellName(6, row)
+
+		_ = indexFile.SetCellValue(sheetName, pathCell, filepath.ToSlash(filepath.Clean(record.Path)))
+		_ = indexFile.SetCellValue(sheetName, titleCell, record.Title)
+		_ = indexFile.SetCellValue(sheetName, descCell, record.Description)
+		_ = indexFile.SetCellValue(sheetName, tagsCell, record.Tags)
+		_ = indexFile.SetCellValue(sheetName, ratingCell, record.Rating)
+		_ = indexFile.SetCellValue(sheetName, createdAtCell, record.CreatedAt)
+	}
+
+	_ = indexFile.SetColWidth(sheetName, "A", "A", 52)
+	_ = indexFile.SetColWidth(sheetName, "B", "B", 24)
+	_ = indexFile.SetColWidth(sheetName, "C", "C", 36)
+	_ = indexFile.SetColWidth(sheetName, "D", "D", 24)
+	_ = indexFile.SetColWidth(sheetName, "E", "E", 10)
+	_ = indexFile.SetColWidth(sheetName, "F", "F", 22)
+
+	indexBuffer, err := indexFile.WriteToBuffer()
+	if err != nil {
+		return
+	}
+	indexEntry, err := zipWriter.Create("index.xlsx")
+	if err != nil {
+		return
+	}
+	_, _ = indexEntry.Write(indexBuffer.Bytes())
 }

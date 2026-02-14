@@ -178,3 +178,12 @@ type UploadedImage struct {
 type ImageUploadResponse struct {
 	Images []*UploadedImage `json:"images"`
 }
+
+type ExportImageRecord struct {
+	Path        string `json:"path"`
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Tags        string `json:"tags"`
+	Rating      int    `json:"rating"`
+	CreatedAt   string `json:"created_at"`
+}

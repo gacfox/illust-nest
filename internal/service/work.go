@@ -5,6 +5,7 @@ import (
 	"illust-nest/internal/model"
 	"illust-nest/internal/repository"
 	"strconv"
+	"strings"
 )
 
 type WorkService struct {
@@ -321,21 +322,39 @@ func (s *WorkService) ParseTagIDs(tagIDsStr string) ([]uint, error) {
 	return tagIDs, nil
 }
 
-func (s *WorkService) ListExportImagePaths() ([]string, error) {
-	images, err := s.workRepo.FindAllImages()
+func (s *WorkService) ListExportImages() ([]ExportImageRecord, error) {
+	works, err := s.workRepo.FindAllForExport()
 	if err != nil {
 		return nil, err
 	}
 
-	paths := make([]string, 0, len(images))
-	for _, image := range images {
-		if image.StoragePath == "" {
-			continue
+	records := make([]ExportImageRecord, 0)
+	for _, work := range works {
+		tagNames := make([]string, 0, len(work.Tags))
+		for _, tag := range work.Tags {
+			if tag.Name == "" {
+				continue
+			}
+			tagNames = append(tagNames, tag.Name)
 		}
-		paths = append(paths, image.StoragePath)
+		tags := strings.Join(tagNames, ", ")
+		createdAt := work.CreatedAt.Format("2006-01-02 15:04:05")
+		for _, image := range work.Images {
+			if image.StoragePath == "" {
+				continue
+			}
+			records = append(records, ExportImageRecord{
+				Path:        image.StoragePath,
+				Title:       work.Title,
+				Description: work.Description,
+				Tags:        tags,
+				Rating:      work.Rating,
+				CreatedAt:   createdAt,
+			})
+		}
 	}
 
-	return paths, nil
+	return records, nil
 }
 
 func splitString(s, sep string) []string {
