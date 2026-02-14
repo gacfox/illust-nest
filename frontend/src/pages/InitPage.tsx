@@ -1,26 +1,66 @@
-import { useState } from "react";
+import * as React from "react";
+import { toast } from "sonner";
+
 import { systemService } from "@/services";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export function InitPage() {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [username, setUsername] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [loading, setLoading] = React.useState(false);
+  const redirectTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
+  React.useEffect(() => {
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+      }
+    };
+  }, []);
+
+  const redirectToLogin = (delayMs: number) => {
+    redirectTimerRef.current = setTimeout(() => {
+      window.location.href = "/login";
+    }, delayMs);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
+    const redirectDelayMs = 3000;
 
     try {
       const res = await systemService.init({ username, password });
       if (res.data.code === 0) {
-        window.location.href = "/login";
+        toast.success("初始化成功", {
+          description: "3秒后跳转到登录页",
+        });
+        redirectToLogin(redirectDelayMs);
       } else {
-        setError(res.data.message);
+        toast.error(res.data.message || "初始化失败", {
+          description: "3秒后跳转到登录页",
+        });
+        redirectToLogin(redirectDelayMs);
       }
-    } catch (err: any) {
-      setError(err.response?.data?.message || "初始化失败");
+    } catch (error: unknown) {
+      const message =
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        typeof (error as { response?: { data?: { message?: string } } })
+          .response?.data?.message === "string"
+          ? (error as { response?: { data?: { message?: string } } }).response!
+              .data!.message!
+          : "初始化失败";
+
+      toast.error(message, {
+        description: "3秒后跳转到登录页",
+      });
+      redirectToLogin(redirectDelayMs);
     } finally {
       setLoading(false);
     }
@@ -38,17 +78,10 @@ export function InitPage() {
           </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
           <div className="space-y-4">
             <div>
-              <label htmlFor="username" className="block text-sm font-medium">
-                用户名
-              </label>
-              <input
+              <Label htmlFor="username">用户名</Label>
+              <Input
                 id="username"
                 type="text"
                 required
@@ -56,14 +89,12 @@ export function InitPage() {
                 maxLength={50}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 bg-input border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1"
               />
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium">
-                密码
-              </label>
-              <input
+              <Label htmlFor="password">密码</Label>
+              <Input
                 id="password"
                 type="password"
                 required
@@ -71,17 +102,13 @@ export function InitPage() {
                 maxLength={100}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 bg-input border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1"
               />
             </div>
           </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? "初始化中..." : "初始化"}
-          </button>
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? "处理中..." : "初始化"}
+          </Button>
         </form>
       </div>
     </div>

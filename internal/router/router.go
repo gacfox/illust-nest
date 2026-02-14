@@ -76,6 +76,8 @@ func Setup() *gin.Engine {
 		collections := api.Group("/collections")
 		{
 			collections.GET("/tree", collectionHandler.Tree)
+			collections.GET("/by-work/:workId", collectionHandler.GetByWork)
+			collections.PUT("/by-work/:workId", collectionHandler.SyncByWork)
 			collections.GET("/:id", collectionHandler.Get)
 			collections.GET("/:id/works", collectionHandler.GetWorks)
 			collections.POST("", collectionHandler.Create)

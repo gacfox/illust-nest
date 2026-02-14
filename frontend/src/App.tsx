@@ -8,24 +8,22 @@ import { Toaster } from "@/components/ui/sonner";
 function App() {
   const { status, loading } = useSystemStatus();
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-        <p>加载中...</p>
-      </div>
-    );
-  }
-
-  if (!status?.initialized) {
-    return <InitPage />;
-  }
-
   return (
     <ThemeProvider defaultTheme="system" storageKey="theme_preference">
-      <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-        <RoutesView />
-        <Toaster position="top-center" richColors closeButton />
-      </Router>
+      {loading ? (
+        <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+          <p>加载中...</p>
+        </div>
+      ) : !status?.initialized ? (
+        <InitPage />
+      ) : (
+        <Router
+          future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+        >
+          <RoutesView />
+        </Router>
+      )}
+      <Toaster position="top-center" richColors closeButton />
     </ThemeProvider>
   );
 }

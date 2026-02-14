@@ -142,16 +142,36 @@ func (r *WorkRepository) Update(work *model.Work, tagIDs []uint) error {
 
 func (r *WorkRepository) Delete(id uint) error {
 	return r.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Delete(&model.Work{}, id).Error; err != nil {
+		if err := tx.Where("work_id = ?", id).Delete(&model.WorkTag{}).Error; err != nil {
 			return err
 		}
-		return tx.Where("work_id = ?", id).Delete(&model.CollectionWork{}).Error
+		if err := tx.Where("work_id = ?", id).Delete(&model.CollectionWork{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("work_id = ?", id).Delete(&model.WorkImage{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&model.Work{}, id).Error
 	})
 }
 
 func (r *WorkRepository) BatchDelete(ids []uint) (int64, error) {
-	result := r.DB.Where("id IN ?", ids).Delete(&model.Work{})
-	return result.RowsAffected, result.Error
+	var deletedCount int64
+	err := r.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Where("work_id IN ?", ids).Delete(&model.WorkTag{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("work_id IN ?", ids).Delete(&model.CollectionWork{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("work_id IN ?", ids).Delete(&model.WorkImage{}).Error; err != nil {
+			return err
+		}
+		result := tx.Where("id IN ?", ids).Delete(&model.Work{})
+		deletedCount = result.RowsAffected
+		return result.Error
+	})
+	return deletedCount, err
 }
 
 func (r *WorkRepository) BatchUpdatePublicStatus(ids []uint, isPublic bool) (int64, error) {
@@ -211,7 +231,11 @@ func (r *WorkRepository) FindByCollectionID(collectionID uint, params map[string
 
 	query := r.DB.Model(&model.Work{}).
 		Joins("JOIN collection_works ON collection_works.work_id = works.id").
-		Where("collection_works.collection_id = ?", collectionID)
+		Where("collection_works.collection_id = ?", collectionID).
+		Preload("Images", func(db *gorm.DB) *gorm.DB {
+			return db.Order("sort_order ASC")
+		}).
+		Preload("Tags")
 
 	if keyword, ok := params["keyword"].(string); ok && keyword != "" {
 		query = query.Where("works.title LIKE ? OR works.description LIKE ?", "%"+keyword+"%", "%"+keyword+"%")

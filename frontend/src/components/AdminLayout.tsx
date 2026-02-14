@@ -5,6 +5,7 @@ import { useTheme } from "@/components/ThemeProvider";
 import { Button } from "@/components/ui/button";
 import {
   Images,
+  FolderKanban,
   Tags,
   Settings,
   ChevronLeft,
@@ -30,6 +31,7 @@ type AdminLayoutProps = {
 
 const navItems = [
   { to: "/", label: "作品管理", icon: Images },
+  { to: "/collections", label: "作品集管理", icon: FolderKanban },
   { to: "/tags", label: "标签管理", icon: Tags },
   { to: "/settings", label: "系统设置", icon: Settings },
 ];

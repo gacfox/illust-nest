@@ -7,6 +7,8 @@ import { SettingsPage } from "@/pages/SettingsPage";
 import { WorkEditPage } from "@/pages/WorkEditPage";
 import { WorkPreviewPage } from "@/pages/WorkPreviewPage";
 import { TagsPage } from "@/pages/TagsPage";
+import { CollectionsPage } from "@/pages/CollectionsPage";
+import { CollectionWorksPage } from "@/pages/CollectionWorksPage";
 
 export function RoutesView() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -33,6 +35,11 @@ export function RoutesView() {
         element={requireAuth(<WorkPreviewPage />)}
       />
       <Route path="/works/:id" element={requireAuth(<WorkEditPage />)} />
+      <Route path="/collections" element={requireAuth(<CollectionsPage />)} />
+      <Route
+        path="/collections/:id/works"
+        element={requireAuth(<CollectionWorksPage />)}
+      />
       <Route path="/tags" element={requireAuth(<TagsPage />)} />
       <Route path="/settings" element={requireAuth(<SettingsPage />)} />
       <Route path="*" element={<Navigate to="/" replace />} />

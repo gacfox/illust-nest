@@ -123,31 +123,23 @@ type ImageInfo struct {
 type CreateCollectionRequest struct {
 	Name        string `json:"name" binding:"required,min=1,max=100"`
 	Description string `json:"description"`
-	ParentID    *uint  `json:"parent_id"`
+	ParentID    *uint  `json:"parent_id,omitempty"`
 }
 
 type UpdateCollectionRequest struct {
 	Name        string `json:"name" binding:"min=1,max=100"`
 	Description string `json:"description"`
-	ParentID    *uint  `json:"parent_id"`
+	ParentID    *uint  `json:"parent_id,omitempty"`
 }
 
 type CollectionInfo struct {
-	ID             uint              `json:"id"`
-	Name           string            `json:"name"`
-	Description    string            `json:"description"`
-	ParentID       *uint             `json:"parent_id"`
-	SortOrder      int               `json:"sort_order"`
-	CreatedAt      string            `json:"created_at"`
-	UpdatedAt      string            `json:"updated_at"`
-	WorkCount      int               `json:"work_count"`
-	Path           []*CollectionPath `json:"path,omitempty"`
-	SubCollections []*CollectionInfo `json:"sub_collections,omitempty"`
-}
-
-type CollectionPath struct {
-	ID   uint   `json:"id"`
-	Name string `json:"name"`
+	ID          uint   `json:"id"`
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	SortOrder   int    `json:"sort_order"`
+	CreatedAt   string `json:"created_at"`
+	UpdatedAt   string `json:"updated_at"`
+	WorkCount   int    `json:"work_count"`
 }
 
 type AddWorksRequest struct {
@@ -156,6 +148,10 @@ type AddWorksRequest struct {
 
 type RemoveWorksRequest struct {
 	WorkIDs []uint `json:"work_ids" binding:"required,min=1"`
+}
+
+type SyncWorkCollectionsRequest struct {
+	CollectionIDs []uint `json:"collection_ids" binding:"required"`
 }
 
 type UpdateSortOrderRequest struct {

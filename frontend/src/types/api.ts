@@ -170,6 +170,10 @@ export interface RemoveWorksRequest {
   work_ids: number[];
 }
 
+export interface SyncWorkCollectionsRequest {
+  collection_ids: number[];
+}
+
 export interface UpdateSortOrderRequest {
   collection_ids: number[];
 }

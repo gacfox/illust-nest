@@ -3,17 +3,18 @@ import { tagService, workService } from "@/services";
 import { useNavigate } from "react-router-dom";
 import type { Tag, Work } from "@/types/api";
 import { AdminLayout } from "@/components/AdminLayout";
+import { WorkCard } from "@/components/WorkCard";
 import { useAuthStore } from "@/stores";
 import {
   Plus,
   SlidersHorizontal,
   X,
-  Layers,
   ArrowDown,
   ArrowUp,
   Search,
+  Pencil,
+  Trash2,
 } from "lucide-react";
-import { AuthImage } from "@/components/AuthImage";
 import {
   Select,
   SelectContent,
@@ -24,7 +25,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function HomePage() {
   const navigate = useNavigate();
@@ -44,6 +54,10 @@ export function HomePage() {
   const [sortBy, setSortBy] = useState("created_at");
   const [sortOrder, setSortOrder] = useState("desc");
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [deleteWorkId, setDeleteWorkId] = useState<number | null>(null);
+  const [deletingSingle, setDeletingSingle] = useState(false);
+  const [batchDeleteOpen, setBatchDeleteOpen] = useState(false);
+  const [deletingBatch, setDeletingBatch] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -166,14 +180,16 @@ export function HomePage() {
 
   const handleBatchDelete = async () => {
     if (selectedIds.length === 0) return;
-    if (!window.confirm(`确认删除选中的 ${selectedIds.length} 个作品吗？`))
-      return;
+    setDeletingBatch(true);
     try {
       await workService.batchDelete(selectedIds);
       setSelectedIds([]);
+      setBatchDeleteOpen(false);
       loadWorks();
     } catch (err) {
       console.error("批量删除失败", err);
+    } finally {
+      setDeletingBatch(false);
     }
   };
 
@@ -188,13 +204,17 @@ export function HomePage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    if (!window.confirm("确认删除该作品吗？")) return;
+  const handleDelete = async () => {
+    if (!deleteWorkId) return;
+    setDeletingSingle(true);
     try {
-      await workService.delete(id);
+      await workService.delete(deleteWorkId);
+      setDeleteWorkId(null);
       loadWorks();
     } catch (err) {
       console.error("删除失败", err);
+    } finally {
+      setDeletingSingle(false);
     }
   };
 
@@ -401,7 +421,11 @@ export function HomePage() {
             <span className="text-muted-foreground">
               已选 {selectedIds.length} 项
             </span>
-            <Button variant="destructive" size="sm" onClick={handleBatchDelete}>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => setBatchDeleteOpen(true)}
+            >
               批量删除
             </Button>
             <Button
@@ -435,88 +459,40 @@ export function HomePage() {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-5">
             {works.map((work) => (
-              <div
+              <WorkCard
                 key={work.id}
-                className="group bg-card border border-border rounded-lg overflow-hidden hover:shadow-lg transition-shadow w-full"
-              >
-                <div className="relative">
-                  <div className="absolute top-2 left-2 z-10">
-                    <Checkbox
-                      checked={selectedIds.includes(work.id)}
-                      onCheckedChange={() => toggleSelect(work.id)}
-                      className="bg-background border-border"
-                    />
-                  </div>
-                  <div className="absolute bottom-3.5 left-2 z-10 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                work={work}
+                onPreview={() => navigate(`/works/${work.id}/preview`)}
+                topLeftOverlay={
+                  <Checkbox
+                    checked={selectedIds.includes(work.id)}
+                    onCheckedChange={() => toggleSelect(work.id)}
+                    className="bg-background border-border"
+                  />
+                }
+                bottomLeftOverlay={
+                  <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="outline"
-                      size="sm"
+                      size="icon"
                       onClick={() => navigate(`/works/${work.id}`)}
-                      className="h-7 px-2.5 text-xs"
+                      className="h-7 w-7"
+                      aria-label="编辑作品"
                     >
-                      编辑
+                      <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       variant="destructive"
-                      size="sm"
-                      onClick={() => handleDelete(work.id)}
-                      className="h-7 px-2.5 text-xs"
+                      size="icon"
+                      onClick={() => setDeleteWorkId(work.id)}
+                      className="h-7 w-7"
+                      aria-label="删除作品"
                     >
-                      删除
+                      <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
-                  {work.cover_image && (
-                    <button
-                      className="w-full"
-                      onClick={() => navigate(`/works/${work.id}/preview`)}
-                    >
-                      <AuthImage
-                        path={work.cover_image.thumbnail_path}
-                        alt={work.title}
-                        className="w-full h-55 object-cover"
-                      />
-                    </button>
-                  )}
-                  {!work.cover_image && (
-                    <div
-                      className="w-full h-55 bg-muted flex items-center justify-center text-muted-foreground text-sm cursor-pointer"
-                      onClick={() => navigate(`/works/${work.id}/preview`)}
-                    >
-                      无封面
-                    </div>
-                  )}
-                  {(() => {
-                    const tagNames = work.tags?.map((tag) => tag.name) ?? [];
-                    const badge = tagNames.includes("R18G")
-                      ? "R18G"
-                      : tagNames.includes("R18")
-                        ? "R18"
-                        : null;
-                    if (!badge) return null;
-                    return (
-                      <div className="absolute top-2 right-2">
-                        <Badge className="bg-pink-500 text-white hover:bg-pink-500/90">
-                          {badge}
-                        </Badge>
-                      </div>
-                    );
-                  })()}
-                  {typeof work.image_count === "number" &&
-                    work.image_count > 1 && (
-                      <div className="absolute bottom-3.5 right-2">
-                        <div className="flex items-center gap-1 rounded-md bg-black/50 px-2 py-1 text-xs text-white">
-                          <Layers className="h-3.5 w-3.5" />
-                          {work.image_count}
-                        </div>
-                      </div>
-                    )}
-                </div>
-                <div className="p-2">
-                  <h3 className="font-semibold text-foreground truncate">
-                    {work.title}
-                  </h3>
-                </div>
-              </div>
+                }
+              />
             ))}
           </div>
           <div ref={loadMoreRef} className="py-4 text-center">
@@ -527,6 +503,64 @@ export function HomePage() {
           </div>
         </>
       )}
+
+      <AlertDialog
+        open={batchDeleteOpen}
+        onOpenChange={(open) => {
+          if (!deletingBatch) {
+            setBatchDeleteOpen(open);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认批量删除作品？</AlertDialogTitle>
+            <AlertDialogDescription>
+              将删除选中的 {selectedIds.length} 个作品，该操作不可恢复。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingBatch}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={handleBatchDelete}
+              disabled={deletingBatch || selectedIds.length === 0}
+            >
+              {deletingBatch ? "删除中..." : "确认删除"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={deleteWorkId !== null}
+        onOpenChange={(open) => {
+          if (!open && !deletingSingle) {
+            setDeleteWorkId(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除作品？</AlertDialogTitle>
+            <AlertDialogDescription>
+              删除后将无法恢复该作品及其关联图片。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingSingle}>
+              取消
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deletingSingle}
+            >
+              {deletingSingle ? "删除中..." : "确认删除"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
 }

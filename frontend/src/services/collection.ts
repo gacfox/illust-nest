@@ -5,19 +5,31 @@ import type {
   CreateCollectionRequest,
   UpdateCollectionRequest,
   AddWorksRequest,
+  SyncWorkCollectionsRequest,
   UpdateSortOrderRequest,
   UpdateWorkSortOrderRequest,
-  WorksResult,
+  WorkListParams,
+  WorkPagedResult,
 } from "@/types/api";
 
 export const collectionService = {
   getTree: () => api.get<ApiResponse<Collection[]>>("/api/collections/tree"),
 
+  getByWork: (workId: number) =>
+    api.get<ApiResponse<{ items: Collection[] }>>(
+      `/api/collections/by-work/${workId}`,
+    ),
+
+  syncByWork: (workId: number, data: SyncWorkCollectionsRequest) =>
+    api.put<ApiResponse<void>>(`/api/collections/by-work/${workId}`, data),
+
   get: (id: number) =>
     api.get<ApiResponse<Collection>>(`/api/collections/${id}`),
 
-  getWorks: (id: number) =>
-    api.get<ApiResponse<WorksResult>>(`/api/collections/${id}/works`),
+  getWorks: (id: number, params?: WorkListParams) =>
+    api.get<ApiResponse<WorkPagedResult>>(`/api/collections/${id}/works`, {
+      params,
+    }),
 
   create: (data: CreateCollectionRequest) =>
     api.post<ApiResponse<Collection>>("/api/collections", data),

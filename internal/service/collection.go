@@ -37,22 +37,26 @@ func (s *CollectionService) GetCollection(id uint) (*CollectionInfo, error) {
 	if err != nil {
 		return nil, errors.New("collection not found")
 	}
+	return s.collectionToInfo(collection), nil
+}
 
-	path, err := s.collectionRepo.FindPath(id)
+func (s *CollectionService) GetCollectionsByWorkID(workID uint) ([]*CollectionInfo, error) {
+	_, err := s.workRepo.FindByID(workID, false)
+	if err != nil {
+		return nil, errors.New("work not found")
+	}
+
+	collections, err := s.collectionRepo.FindByWorkID(workID)
 	if err != nil {
 		return nil, err
 	}
 
-	info := s.collectionToInfo(collection)
-	info.Path = make([]*CollectionPath, 0, len(path))
-	for _, p := range path {
-		info.Path = append(info.Path, &CollectionPath{
-			ID:   p.ID,
-			Name: p.Name,
-		})
+	result := make([]*CollectionInfo, 0, len(collections))
+	for i := range collections {
+		result = append(result, s.collectionToInfo(&collections[i]))
 	}
 
-	return info, nil
+	return result, nil
 }
 
 func (s *CollectionService) GetCollectionWorks(id uint, params *WorkListParams) (*WorkPagedResult, error) {
@@ -106,29 +110,12 @@ func (s *CollectionService) GetCollectionWorks(id uint, params *WorkListParams) 
 
 func (s *CollectionService) CreateCollection(req *CreateCollectionRequest) (*CollectionInfo, error) {
 	if req.ParentID != nil {
-		_, err := s.collectionRepo.FindByID(*req.ParentID)
-		if err != nil {
-			return nil, errors.New("parent collection not found")
-		}
-
-		descendants, err := s.collectionRepo.GetDescendants(*req.ParentID)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, desc := range descendants {
-			for _, sub := range desc.SubCollections {
-				if sub.ParentID != nil && *sub.ParentID == *req.ParentID {
-					return nil, errors.New("circular reference: cannot set as descendant")
-				}
-			}
-		}
+		return nil, errors.New("flat collections only: parent_id is not supported")
 	}
 
 	collection := &model.Collection{
 		Name:        req.Name,
 		Description: req.Description,
-		ParentID:    req.ParentID,
 		SortOrder:   0,
 	}
 
@@ -145,31 +132,16 @@ func (s *CollectionService) UpdateCollection(id uint, req *UpdateCollectionReque
 		return nil, errors.New("collection not found")
 	}
 
+	if req.ParentID != nil {
+		return nil, errors.New("flat collections only: parent_id is not supported")
+	}
+
 	if req.Name != "" {
 		collection.Name = req.Name
 	}
 	if req.Description != "" {
 		collection.Description = req.Description
 	}
-	if req.ParentID != nil {
-		if *req.ParentID == id {
-			return nil, errors.New("cannot set self as parent")
-		}
-
-		descendants, err := s.collectionRepo.GetDescendants(id)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, desc := range descendants {
-			if desc.ID == *req.ParentID {
-				return nil, errors.New("circular reference: cannot set as descendant")
-			}
-		}
-
-		collection.ParentID = req.ParentID
-	}
-
 	if err := s.collectionRepo.Update(collection); err != nil {
 		return nil, err
 	}
@@ -246,12 +218,24 @@ func (s *CollectionService) RemoveWorks(id uint, req *RemoveWorksRequest) (*Work
 	return &WorksResult{Works: workInfos}, nil
 }
 
+func (s *CollectionService) SyncWorkCollections(workID uint, req *SyncWorkCollectionsRequest) error {
+	_, err := s.workRepo.FindByID(workID, false)
+	if err != nil {
+		return errors.New("work not found")
+	}
+
+	for _, collectionID := range req.CollectionIDs {
+		if _, findErr := s.collectionRepo.FindByID(collectionID); findErr != nil {
+			return errors.New("collection not found")
+		}
+	}
+
+	return s.collectionRepo.ReplaceWorkCollections(workID, req.CollectionIDs)
+}
+
 func (s *CollectionService) UpdateSortOrder(parentID *uint, req *UpdateSortOrderRequest) error {
 	if parentID != nil {
-		_, err := s.collectionRepo.FindByID(*parentID)
-		if err != nil {
-			return errors.New("parent collection not found")
-		}
+		return errors.New("flat collections only: parent_id is not supported")
 	}
 
 	return s.collectionRepo.UpdateSortOrder(parentID, req.CollectionIDs)
@@ -271,18 +255,10 @@ func (s *CollectionService) collectionToInfo(collection *model.Collection) *Coll
 		ID:          collection.ID,
 		Name:        collection.Name,
 		Description: collection.Description,
-		ParentID:    collection.ParentID,
 		SortOrder:   collection.SortOrder,
 		CreatedAt:   collection.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		UpdatedAt:   collection.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		WorkCount:   collection.WorkCount,
-	}
-
-	if len(collection.SubCollections) > 0 {
-		info.SubCollections = make([]*CollectionInfo, 0, len(collection.SubCollections))
-		for i := range collection.SubCollections {
-			info.SubCollections = append(info.SubCollections, s.collectionToInfo(&collection.SubCollections[i]))
-		}
 	}
 
 	return info
@@ -299,7 +275,7 @@ func workToInfo(work *model.Work, fullDetails bool) *WorkInfo {
 		UpdatedAt:   work.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
-	if fullDetails && len(work.Images) > 0 {
+	if len(work.Images) > 0 {
 		info.CoverImage = &ImageInfo{
 			ID:            work.Images[0].ID,
 			ThumbnailPath: work.Images[0].ThumbnailPath,
@@ -309,7 +285,10 @@ func workToInfo(work *model.Work, fullDetails bool) *WorkInfo {
 			Height:        work.Images[0].Height,
 			SortOrder:     work.Images[0].SortOrder,
 		}
+		info.ImageCount = len(work.Images)
+	}
 
+	if fullDetails {
 		var images []ImageInfo
 		for _, img := range work.Images {
 			images = append(images, ImageInfo{
@@ -322,10 +301,7 @@ func workToInfo(work *model.Work, fullDetails bool) *WorkInfo {
 				SortOrder:     img.SortOrder,
 			})
 		}
-	}
-
-	if len(work.Images) > 0 {
-		info.ImageCount = len(work.Images)
+		info.Images = images
 	}
 
 	if len(work.Tags) > 0 {

@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import { AdminLayout } from "@/components/AdminLayout";
 import { AuthImage } from "@/components/AuthImage";
-import { workService } from "@/services";
-import type { Image, Tag, Work } from "@/types/api";
+import { collectionService, workService } from "@/services";
+import type { Collection, Image, Tag, Work } from "@/types/api";
 import { useAuthStore } from "@/stores";
 import {
   Star,
@@ -14,9 +14,32 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
+  FolderPlus,
+  Check,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type WorkDetail = Work & {
   images?: Image[];
@@ -35,6 +58,7 @@ function formatDateTime(value?: string) {
 
 export function WorkPreviewPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const workId = Number(id);
   const clearAuth = useAuthStore((state) => state.clearAuth);
@@ -46,6 +70,18 @@ export function WorkPreviewPage() {
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
+  const [collectionDialogOpen, setCollectionDialogOpen] = useState(false);
+  const [collectionsLoading, setCollectionsLoading] = useState(false);
+  const [collections, setCollections] = useState<Collection[]>([]);
+  const [selectedCollectionIds, setSelectedCollectionIds] = useState<number[]>(
+    [],
+  );
+  const [initialSelectedCollectionIds, setInitialSelectedCollectionIds] =
+    useState<number[]>([]);
+  const [addingToCollection, setAddingToCollection] = useState(false);
+  const [collectionError, setCollectionError] = useState("");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const lightboxStageRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -79,18 +115,155 @@ export function WorkPreviewPage() {
 
   const handleDelete = async () => {
     if (!workId) return;
-    if (!window.confirm("确认删除该作品吗？")) return;
+    setDeleting(true);
     try {
       await workService.delete(workId);
+      setDeleteDialogOpen(false);
       navigate("/");
     } catch (err) {
       console.error("删除失败", err);
+    } finally {
+      setDeleting(false);
     }
   };
+
+  const loadCollections = async () => {
+    if (!workId) {
+      return;
+    }
+
+    setCollectionsLoading(true);
+    setCollectionError("");
+    try {
+      const [treeRes, selectedRes] = await Promise.all([
+        collectionService.getTree(),
+        collectionService.getByWork(workId),
+      ]);
+
+      if (treeRes.data.code !== 0) {
+        setCollections([]);
+        setCollectionError(treeRes.data.message || "加载作品集失败");
+        return;
+      }
+
+      const data = treeRes.data.data as Collection[] | { items?: Collection[] };
+      const items = Array.isArray(data) ? data : (data.items ?? []);
+      setCollections(items);
+
+      if (selectedRes.data.code === 0) {
+        const selectedItems = selectedRes.data.data?.items ?? [];
+        const ids = selectedItems.map((item) => item.id);
+        setSelectedCollectionIds(ids);
+        setInitialSelectedCollectionIds(ids);
+      } else {
+        setSelectedCollectionIds([]);
+        setInitialSelectedCollectionIds([]);
+      }
+    } catch (error) {
+      console.error("加载作品集失败", error);
+      setCollections([]);
+      setCollectionError("加载作品集失败");
+    } finally {
+      setCollectionsLoading(false);
+    }
+  };
+
+  const openAddToCollectionDialog = async () => {
+    setCollectionDialogOpen(true);
+    await loadCollections();
+  };
+
+  const handleAddToCollection = async () => {
+    if (!work?.id) {
+      return;
+    }
+
+    const toAdd = selectedCollectionIds.filter(
+      (id) => !initialSelectedCollectionIds.includes(id),
+    );
+    const toRemove = initialSelectedCollectionIds.filter(
+      (id) => !selectedCollectionIds.includes(id),
+    );
+
+    if (toAdd.length === 0 && toRemove.length === 0) {
+      setCollectionDialogOpen(false);
+      return;
+    }
+
+    setAddingToCollection(true);
+    setCollectionError("");
+    try {
+      const response = await collectionService.syncByWork(work.id as number, {
+        collection_ids: selectedCollectionIds,
+      });
+      if (response.data.code !== 0) {
+        setCollectionError(response.data.message || "更新作品集失败");
+        return;
+      }
+
+      setCollectionDialogOpen(false);
+      const addedCount = toAdd.length;
+      const removedCount = toRemove.length;
+      if (addedCount > 0 && removedCount > 0) {
+        toast.success(
+          `已更新作品集（新增 ${addedCount}，移除 ${removedCount}）`,
+        );
+      } else if (addedCount > 0) {
+        toast.success(`已新增到 ${addedCount} 个作品集`);
+      } else {
+        toast.success(`已从 ${removedCount} 个作品集中移除`);
+      }
+    } catch (error: unknown) {
+      const message =
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        typeof (error as { response?: { data?: { message?: string } } })
+          .response?.data?.message === "string"
+          ? (error as { response?: { data?: { message?: string } } }).response!
+              .data!.message!
+          : "更新作品集失败";
+      setCollectionError(message);
+    } finally {
+      setAddingToCollection(false);
+    }
+  };
+
+  const hasCollectionSelectionChanged =
+    selectedCollectionIds.length !== initialSelectedCollectionIds.length ||
+    selectedCollectionIds.some(
+      (id) => !initialSelectedCollectionIds.includes(id),
+    ) ||
+    initialSelectedCollectionIds.some(
+      (id) => !selectedCollectionIds.includes(id),
+    );
+
+  const handleToggleCollection = (collectionId: number) => {
+    setSelectedCollectionIds((prev) =>
+      prev.includes(collectionId)
+        ? prev.filter((id) => id !== collectionId)
+        : [...prev, collectionId],
+    );
+  };
+
+  const collectionDialogConfirmText = addingToCollection ? "保存中..." : "保存";
 
   const images = useMemo(() => work?.images ?? [], [work]);
   const visibleImages = showAll ? images : images.slice(0, 1);
   const activeImage = images[lightboxIndex];
+  const previewSource = location.state as
+    | {
+        from?: string;
+        collectionId?: number;
+        collectionName?: string;
+      }
+    | undefined;
+  const isFromCollection = previewSource?.from === "collections";
+  const collectionNameFromSource =
+    typeof previewSource?.collectionName === "string" &&
+    previewSource.collectionName.trim() !== ""
+      ? previewSource.collectionName
+      : "作品集";
 
   const resetTransform = () => {
     setZoom(1);
@@ -158,10 +331,25 @@ export function WorkPreviewPage() {
   return (
     <AdminLayout
       title="作品预览"
-      breadcrumbs={[
-        { label: "作品管理", href: "/" },
-        { label: work?.title || "作品预览" },
-      ]}
+      breadcrumbs={
+        isFromCollection
+          ? [
+              { label: "作品集管理", href: "/collections" },
+              {
+                label: collectionNameFromSource,
+                href:
+                  typeof previewSource?.collectionId === "number" &&
+                  previewSource.collectionId > 0
+                    ? `/collections/${previewSource.collectionId}/works`
+                    : "/collections",
+              },
+              { label: work?.title || "作品预览" },
+            ]
+          : [
+              { label: "作品管理", href: "/" },
+              { label: work?.title || "作品预览" },
+            ]
+      }
       onLogout={handleLogout}
     >
       {loading ? (
@@ -184,8 +372,9 @@ export function WorkPreviewPage() {
                       onClick={() => openLightbox(showAll ? index : 0)}
                     >
                       <AuthImage
-                        path={img.thumbnail_path}
+                        path={img.original_path || img.thumbnail_path}
                         alt={work?.title ?? ""}
+                        variant={img.original_path ? "original" : "thumbnail"}
                         className="w-full max-h-155 object-contain bg-muted"
                       />
                     </Button>
@@ -259,16 +448,144 @@ export function WorkPreviewPage() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button onClick={() => navigate(`/works/${work.id}`)}>
+              <Button variant="outline" onClick={openAddToCollectionDialog}>
+                <FolderPlus className="h-4 w-4 mr-1" />
+                作品集
+              </Button>
+              <Button
+                onClick={() =>
+                  navigate(`/works/${work.id}`, {
+                    state: previewSource,
+                  })
+                }
+              >
+                <Pencil className="h-4 w-4 mr-1" />
                 编辑
               </Button>
-              <Button variant="destructive" onClick={handleDelete}>
+              <Button
+                variant="destructive"
+                onClick={() => setDeleteDialogOpen(true)}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
                 删除
               </Button>
             </div>
           </div>
         </div>
       )}
+
+      <Dialog
+        open={collectionDialogOpen}
+        onOpenChange={(open) => {
+          setCollectionDialogOpen(open);
+          if (!open) {
+            setCollectionError("");
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>加入作品集</DialogTitle>
+            <DialogDescription>
+              可多选作品集，已加入的作品集会自动勾选
+            </DialogDescription>
+          </DialogHeader>
+
+          {collectionError && (
+            <div className="text-sm text-destructive">{collectionError}</div>
+          )}
+
+          <div className="max-h-72 overflow-y-auto rounded-md border border-border">
+            {collectionsLoading ? (
+              <div className="p-4 text-sm text-muted-foreground">加载中...</div>
+            ) : collections.length === 0 ? (
+              <div className="p-4 text-sm text-muted-foreground">
+                暂无可用作品集
+              </div>
+            ) : (
+              <div className="divide-y divide-border">
+                {collections.map((collection) => {
+                  const selected = selectedCollectionIds.includes(
+                    collection.id,
+                  );
+                  return (
+                    <button
+                      key={collection.id}
+                      type="button"
+                      onClick={() => handleToggleCollection(collection.id)}
+                      className={[
+                        "w-full px-3 py-2 text-left flex items-center justify-between",
+                        selected
+                          ? "bg-accent text-foreground"
+                          : "hover:bg-accent/60 text-foreground",
+                      ].join(" ")}
+                    >
+                      <div>
+                        <div className="text-sm font-medium">
+                          {collection.name}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {collection.work_count} 项作品
+                        </div>
+                      </div>
+                      {selected && <Check className="h-4 w-4 text-primary" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCollectionDialogOpen(false)}
+              disabled={addingToCollection}
+            >
+              取消
+            </Button>
+            <Button
+              onClick={handleAddToCollection}
+              disabled={
+                addingToCollection ||
+                collectionsLoading ||
+                collections.length === 0 ||
+                !hasCollectionSelectionChanged
+              }
+            >
+              {collectionDialogConfirmText}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={deleteDialogOpen}
+        onOpenChange={(open) => {
+          if (!deleting) {
+            setDeleteDialogOpen(open);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>确认删除作品？</AlertDialogTitle>
+            <AlertDialogDescription>
+              删除后将无法恢复该作品及其关联图片。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleting}
+            >
+              {deleting ? "删除中..." : "确认删除"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {lightboxOpen && activeImage && (
         <div className="fixed inset-0 z-50 bg-black/80">

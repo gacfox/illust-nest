@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ type UploadItem = {
 
 export function WorkEditPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const workId = Number(id);
   const isNew = !id;
@@ -40,26 +41,41 @@ export function WorkEditPage() {
   const [newUploads, setNewUploads] = useState<UploadItem[]>([]);
   const [imageOrder, setImageOrder] = useState<number[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const editSource = location.state as
+    | {
+        from?: string;
+        collectionId?: number;
+        collectionName?: string;
+      }
+    | undefined;
+  const isFromCollection = editSource?.from === "collections";
+  const collectionNameFromSource =
+    typeof editSource?.collectionName === "string" &&
+    editSource.collectionName.trim() !== ""
+      ? editSource.collectionName
+      : "作品集";
+  const collectionWorksHref =
+    typeof editSource?.collectionId === "number" && editSource.collectionId > 0
+      ? `/collections/${editSource.collectionId}/works`
+      : "/collections";
 
   const loadData = useCallback(async () => {
-    if (isNew) {
-      return;
-    }
     try {
-      const [workRes, tagRes] = await Promise.all([
-        workService.get(workId),
-        tagService.list(),
-      ]);
-      if (workRes.data.code === 0) {
-        const detail = workRes.data.data as WorkDetail;
-        setWork(detail);
-        setTitle(detail.title);
-        setDescription(detail.description || "");
-        setRating(detail.rating || 0);
-        setIsPublic(detail.is_public || false);
-        setSelectedTagIds(detail.tags?.map((t) => t.id) ?? []);
-        setImageOrder(detail.images?.map((img) => img.id) ?? []);
+      if (!isNew) {
+        const workRes = await workService.get(workId);
+        if (workRes.data.code === 0) {
+          const detail = workRes.data.data as WorkDetail;
+          setWork(detail);
+          setTitle(detail.title);
+          setDescription(detail.description || "");
+          setRating(detail.rating || 0);
+          setIsPublic(detail.is_public || false);
+          setSelectedTagIds(detail.tags?.map((t) => t.id) ?? []);
+          setImageOrder(detail.images?.map((img) => img.id) ?? []);
+        }
       }
+
+      const tagRes = await tagService.list();
       if (tagRes.data.code === 0) {
         const data = tagRes.data.data as any;
         const list = Array.isArray(data) ? data : (data?.items ?? []);
@@ -261,10 +277,18 @@ export function WorkEditPage() {
     return (
       <AdminLayout
         title="作品编辑"
-        breadcrumbs={[
-          { label: "作品管理", href: "/" },
-          { label: isNew ? "新建作品" : "作品编辑" },
-        ]}
+        breadcrumbs={
+          isFromCollection && !isNew
+            ? [
+                { label: "作品集管理", href: "/collections" },
+                { label: collectionNameFromSource, href: collectionWorksHref },
+                { label: isNew ? "新建作品" : "作品编辑" },
+              ]
+            : [
+                { label: "作品管理", href: "/" },
+                { label: isNew ? "新建作品" : "作品编辑" },
+              ]
+        }
         onLogout={handleLogout}
       >
         <div className="text-center text-muted-foreground">加载中...</div>
@@ -276,7 +300,15 @@ export function WorkEditPage() {
     return (
       <AdminLayout
         title="作品编辑"
-        breadcrumbs={[{ label: "作品管理", href: "/" }, { label: "作品编辑" }]}
+        breadcrumbs={
+          isFromCollection
+            ? [
+                { label: "作品集管理", href: "/collections" },
+                { label: collectionNameFromSource, href: collectionWorksHref },
+                { label: "作品编辑" },
+              ]
+            : [{ label: "作品管理", href: "/" }, { label: "作品编辑" }]
+        }
         onLogout={handleLogout}
       >
         <div className="text-center text-muted-foreground">作品不存在</div>
@@ -290,10 +322,16 @@ export function WorkEditPage() {
       breadcrumbs={
         isNew
           ? [{ label: "作品管理", href: "/" }, { label: "新建作品" }]
-          : [
-              { label: "作品管理", href: "/" },
-              { label: work?.title || "作品编辑" },
-            ]
+          : isFromCollection
+            ? [
+                { label: "作品集管理", href: "/collections" },
+                { label: collectionNameFromSource, href: collectionWorksHref },
+                { label: work?.title || "作品编辑" },
+              ]
+            : [
+                { label: "作品管理", href: "/" },
+                { label: work?.title || "作品编辑" },
+              ]
       }
       onLogout={handleLogout}
     >
@@ -543,7 +581,11 @@ export function WorkEditPage() {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => navigate("/")}
+                onClick={() =>
+                  navigate(
+                    isFromCollection && !isNew ? collectionWorksHref : "/",
+                  )
+                }
                 className="flex-1"
               >
                 {isNew ? "取消" : "返回"}

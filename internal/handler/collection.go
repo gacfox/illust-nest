@@ -47,6 +47,53 @@ func (h *CollectionHandler) Get(c *gin.Context) {
 	Success(c, collection)
 }
 
+func (h *CollectionHandler) GetByWork(c *gin.Context) {
+	workIDParam := c.Param("workId")
+	workID, err := strconv.ParseUint(workIDParam, 10, 32)
+	if err != nil {
+		BadRequest(c, "invalid work id")
+		return
+	}
+
+	collections, err := h.collectionService.GetCollectionsByWorkID(uint(workID))
+	if err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			NotFound(c)
+		} else {
+			InternalError(c)
+		}
+		return
+	}
+
+	Success(c, gin.H{"items": collections})
+}
+
+func (h *CollectionHandler) SyncByWork(c *gin.Context) {
+	workIDParam := c.Param("workId")
+	workID, err := strconv.ParseUint(workIDParam, 10, 32)
+	if err != nil {
+		BadRequest(c, "invalid work id")
+		return
+	}
+
+	var req service.SyncWorkCollectionsRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	if err := h.collectionService.SyncWorkCollections(uint(workID), &req); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			NotFound(c)
+		} else {
+			InternalError(c)
+		}
+		return
+	}
+
+	Success(c, nil)
+}
+
 func (h *CollectionHandler) GetWorks(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 32)
@@ -134,7 +181,7 @@ func (h *CollectionHandler) Create(c *gin.Context) {
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			NotFound(c)
-		} else if strings.Contains(err.Error(), "circular") {
+		} else if strings.Contains(err.Error(), "circular") || strings.Contains(err.Error(), "single-level") || strings.Contains(err.Error(), "self as parent") || strings.Contains(err.Error(), "flat collections") {
 			BadRequest(c, err.Error())
 		} else {
 			InternalError(c)
@@ -163,7 +210,7 @@ func (h *CollectionHandler) Update(c *gin.Context) {
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			NotFound(c)
-		} else if strings.Contains(err.Error(), "circular") {
+		} else if strings.Contains(err.Error(), "circular") || strings.Contains(err.Error(), "single-level") || strings.Contains(err.Error(), "self as parent") || strings.Contains(err.Error(), "flat collections") {
 			BadRequest(c, err.Error())
 		} else {
 			InternalError(c)
@@ -233,13 +280,23 @@ func (h *CollectionHandler) RemoveWorks(c *gin.Context) {
 		return
 	}
 
-	var req service.RemoveWorksRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		BadRequest(c, err.Error())
+	idsQuery := c.Query("ids")
+	if idsQuery == "" {
+		BadRequest(c, "ids is required")
 		return
 	}
 
-	resp, err := h.collectionService.RemoveWorks(uint(id), &req)
+	ids, parseErr := parseTagIDs(idsQuery)
+	if parseErr != nil || len(ids) == 0 {
+		BadRequest(c, "invalid ids")
+		return
+	}
+
+	req := &service.RemoveWorksRequest{
+		WorkIDs: ids,
+	}
+
+	resp, err := h.collectionService.RemoveWorks(uint(id), req)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			NotFound(c)
@@ -254,15 +311,9 @@ func (h *CollectionHandler) RemoveWorks(c *gin.Context) {
 
 func (h *CollectionHandler) UpdateSortOrder(c *gin.Context) {
 	parentIDParam := c.Query("parent_id")
-	var parentID *uint
 	if parentIDParam != "" {
-		id, err := strconv.ParseUint(parentIDParam, 10, 32)
-		if err != nil {
-			BadRequest(c, "invalid parent collection id")
-			return
-		}
-		pid := uint(id)
-		parentID = &pid
+		BadRequest(c, "flat collections only: parent_id is not supported")
+		return
 	}
 
 	var req service.UpdateSortOrderRequest
@@ -271,9 +322,11 @@ func (h *CollectionHandler) UpdateSortOrder(c *gin.Context) {
 		return
 	}
 
-	if err := h.collectionService.UpdateSortOrder(parentID, &req); err != nil {
+	if err := h.collectionService.UpdateSortOrder(nil, &req); err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			NotFound(c)
+		} else if strings.Contains(err.Error(), "single-level") || strings.Contains(err.Error(), "flat collections") {
+			BadRequest(c, err.Error())
 		} else {
 			InternalError(c)
 		}

@@ -2,6 +2,9 @@ import { useState } from "react";
 import { authService } from "@/services";
 import { useAuthStore } from "@/stores";
 import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -50,39 +53,31 @@ export function LoginPage() {
           )}
           <div className="space-y-4">
             <div>
-              <label htmlFor="username" className="block text-sm font-medium">
-                用户名
-              </label>
-              <input
+              <Label htmlFor="username">用户名</Label>
+              <Input
                 id="username"
                 type="text"
                 required
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 bg-input border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1"
               />
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm font-medium">
-                密码
-              </label>
-              <input
+              <Label htmlFor="password">密码</Label>
+              <Input
                 id="password"
                 type="password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 bg-input border border-border rounded-md text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                className="mt-1"
               />
             </div>
           </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
-          >
+          <Button type="submit" disabled={loading} className="w-full">
             {loading ? "登录中..." : "登录"}
-          </button>
+          </Button>
         </form>
       </div>
     </div>
