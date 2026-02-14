@@ -1,6 +1,6 @@
 # Illust Nest
 
-轻量级、自托管的插画和照片图库管理系统，适合部署在树莓派、NAS或云主机上。
+超轻量级、自托管的插画和照片图库管理系统，适合部署在树莓派、NAS或云主机上。
 
 ![截图](doc/1.webp)
 
@@ -87,3 +87,12 @@ web:
 - 作品详情：`GET /api/public/works/:id`
 - 作品原图：`GET /api/public/images/originals/*filepath`
 - 作品缩略图：`GET /api/public/images/thumbnails/*filepath`
+
+## 未来计划
+
+- [ ] 支持S3、WebDAV作为存储后端
+- [ ] 重复图片标记功能
+- [ ] 更多图片格式支持和图片格式转换、下载功能
+- [ ] 支持读取和编辑图片本身的EXIF信息
+- [ ] 数据统计功能
+- [ ] 提供API接口，便于和爬虫、自动化AI等集成
