@@ -10,17 +10,5 @@ jwt:
   secret: CHANGE_THIS_TO_A_SECURE_RANDOM_STRING_IN_PRODUCTION
   expire_hours: 168
 
-upload:
-  max_file_size: 20
-  allowed_formats:
-    - image/jpeg
-    - image/png
-    - image/gif
-    - image/webp
-
-thumbnail:
-  max_width: 400
-  quality: 85
-
 web:
   static_dir: ./frontend/dist

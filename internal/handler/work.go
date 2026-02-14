@@ -158,8 +158,7 @@ func (h *WorkHandler) Create(c *gin.Context) {
 	}
 
 	for _, file := range files {
-		fileSizeMB := float64(file.Size) / (1024 * 1024)
-		if fileSizeMB > 20 {
+		if file.Size > service.MaxUploadFileSizeBytes {
 			BadRequest(c, "file size exceeds 20MB")
 			return
 		}

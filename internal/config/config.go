@@ -8,12 +8,10 @@ import (
 )
 
 type Config struct {
-	Server    ServerConfig    `yaml:"server"`
-	Database  DatabaseConfig  `yaml:"database"`
-	JWT       JWTConfig       `yaml:"jwt"`
-	Upload    UploadConfig    `yaml:"upload"`
-	Thumbnail ThumbnailConfig `yaml:"thumbnail"`
-	Web       WebConfig       `yaml:"web"`
+	Server   ServerConfig   `yaml:"server"`
+	Database DatabaseConfig `yaml:"database"`
+	JWT      JWTConfig      `yaml:"jwt"`
+	Web      WebConfig      `yaml:"web"`
 }
 
 type ServerConfig struct {
@@ -29,16 +27,6 @@ type DatabaseConfig struct {
 type JWTConfig struct {
 	Secret      string `yaml:"secret"`
 	ExpireHours int    `yaml:"expire_hours"`
-}
-
-type UploadConfig struct {
-	MaxFileSize    int64    `yaml:"max_file_size"`
-	AllowedFormats []string `yaml:"allowed_formats"`
-}
-
-type ThumbnailConfig struct {
-	MaxWidth int `yaml:"max_width"`
-	Quality  int `yaml:"quality"`
 }
 
 type WebConfig struct {

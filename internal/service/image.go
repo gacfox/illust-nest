@@ -3,7 +3,6 @@ package service
 import (
 	"crypto/rand"
 	"fmt"
-	"illust-nest/internal/config"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -18,6 +17,20 @@ import (
 	"github.com/disintegration/imaging"
 	_ "golang.org/x/image/webp"
 )
+
+const (
+	MaxUploadFileSizeMB    int64 = 20
+	MaxUploadFileSizeBytes       = MaxUploadFileSizeMB * 1024 * 1024
+	thumbnailMaxWidth            = 400
+	thumbnailQuality             = 85
+)
+
+var allowedUploadFormats = map[string]struct{}{
+	"image/jpeg": {},
+	"image/png":  {},
+	"image/gif":  {},
+	"image/webp": {},
+}
 
 type ImageService struct{}
 
@@ -80,8 +93,8 @@ func (s *ImageService) processImage(file *multipart.FileHeader) (*UploadedImage,
 		return nil, err
 	}
 
-	thumbnailImg := imaging.Resize(img, config.GlobalConfig.Thumbnail.MaxWidth, 0, imaging.Lanczos)
-	if err := imaging.Save(thumbnailImg, thumbnailPath, imaging.JPEGQuality(config.GlobalConfig.Thumbnail.Quality)); err != nil {
+	thumbnailImg := imaging.Resize(img, thumbnailMaxWidth, 0, imaging.Lanczos)
+	if err := imaging.Save(thumbnailImg, thumbnailPath, imaging.JPEGQuality(thumbnailQuality)); err != nil {
 		return nil, err
 	}
 
@@ -127,10 +140,6 @@ func generateUUID() string {
 
 func (s *ImageService) ValidateFormat(file *multipart.FileHeader) bool {
 	contentType := file.Header.Get("Content-Type")
-	for _, allowed := range config.GlobalConfig.Upload.AllowedFormats {
-		if contentType == allowed {
-			return true
-		}
-	}
-	return false
+	_, ok := allowedUploadFormats[contentType]
+	return ok
 }
