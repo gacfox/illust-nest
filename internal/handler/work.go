@@ -382,24 +382,14 @@ func (h *WorkHandler) ExportImages(c *gin.Context) {
 	zipWriter := zip.NewWriter(c.Writer)
 	defer zipWriter.Close()
 
-	dataRoot := filepath.Clean("./data")
-	dataRootAbs, absErr := filepath.Abs(dataRoot)
-	if absErr != nil {
-		return
-	}
-
 	added := make(map[string]struct{}, len(records))
 	for _, record := range records {
-		cleanPath := filepath.Clean(record.Path)
-		if cleanPath == "." || cleanPath == "" || strings.HasPrefix(cleanPath, "..") {
+		cleanPath := filepath.ToSlash(filepath.Clean(record.Path))
+		if cleanPath == "." || cleanPath == "" || strings.HasPrefix(cleanPath, "..") || strings.Contains(cleanPath, "/../") {
 			continue
 		}
-		fullPath := filepath.Join(dataRoot, cleanPath)
-		fullPathAbs, err := filepath.Abs(fullPath)
+		fullPathAbs, err := service.ResolveUploadPath(cleanPath)
 		if err != nil {
-			continue
-		}
-		if fullPathAbs != dataRootAbs && !strings.HasPrefix(fullPathAbs, dataRootAbs+string(os.PathSeparator)) {
 			continue
 		}
 		if _, exists := added[fullPathAbs]; exists {

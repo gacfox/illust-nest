@@ -2,7 +2,9 @@ package service
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
+	"illust-nest/internal/config"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -31,6 +33,8 @@ var allowedUploadFormats = map[string]struct{}{
 	"image/gif":  {},
 	"image/webp": {},
 }
+
+const logicalUploadPrefix = "uploads/"
 
 type ImageService struct{}
 
@@ -69,8 +73,8 @@ func (s *ImageService) processImage(file *multipart.FileHeader) (*UploadedImage,
 
 	uuid := generateUUID()
 	ext := filepath.Ext(file.Filename)
-	originalPath := s.getStoragePath("originals", uuid, ext)
-	thumbnailPath := s.getStoragePath("thumbnails", uuid, ".jpg")
+	originalPath, originalLogicalPath := s.getStoragePath("originals", uuid, ext)
+	thumbnailPath, thumbnailLogicalPath := s.getStoragePath("thumbnails", uuid, ".jpg")
 
 	originalDir := filepath.Dir(originalPath)
 	if err := os.MkdirAll(originalDir, 0755); err != nil {
@@ -99,8 +103,8 @@ func (s *ImageService) processImage(file *multipart.FileHeader) (*UploadedImage,
 	}
 
 	return &UploadedImage{
-		StoragePath:      strings.TrimPrefix(originalPath, "./data/"),
-		ThumbnailPath:    strings.TrimPrefix(thumbnailPath, "./data/"),
+		StoragePath:      originalLogicalPath,
+		ThumbnailPath:    thumbnailLogicalPath,
 		FileSize:         file.Size,
 		Width:            width,
 		Height:           height,
@@ -108,16 +112,24 @@ func (s *ImageService) processImage(file *multipart.FileHeader) (*UploadedImage,
 	}, nil
 }
 
-func (s *ImageService) getStoragePath(subDir, uuid, ext string) string {
+func (s *ImageService) getStoragePath(subDir, uuid, ext string) (string, string) {
 	now := time.Now()
 	year := now.Format("2006")
 	month := now.Format("01")
-	return fmt.Sprintf("./data/uploads/%s/%s/%s/%s%s", subDir, year, month, uuid, ext)
+	logicalPath := fmt.Sprintf("%s%s/%s/%s/%s%s", logicalUploadPrefix, subDir, year, month, uuid, ext)
+	physicalPath := filepath.Join(uploadBaseDir(), subDir, year, month, uuid+ext)
+	return physicalPath, logicalPath
 }
 
 func (s *ImageService) DeleteImage(storagePath, thumbnailPath string) error {
-	originalFullPath := filepath.Join("./data", storagePath)
-	thumbnailFullPath := filepath.Join("./data", thumbnailPath)
+	originalFullPath, err := ResolveUploadPath(storagePath)
+	if err != nil {
+		return err
+	}
+	thumbnailFullPath, err := ResolveUploadPath(thumbnailPath)
+	if err != nil {
+		return err
+	}
 
 	if err := os.Remove(originalFullPath); err != nil && !os.IsNotExist(err) {
 		return err
@@ -142,4 +154,44 @@ func (s *ImageService) ValidateFormat(file *multipart.FileHeader) bool {
 	contentType := file.Header.Get("Content-Type")
 	_, ok := allowedUploadFormats[contentType]
 	return ok
+}
+
+func uploadBaseDir() string {
+	base := strings.TrimSpace(config.GlobalConfig.Storage.UploadBaseDir)
+	if base == "" {
+		return "./data/uploads"
+	}
+	return base
+}
+
+func UploadBaseDir() string {
+	return uploadBaseDir()
+}
+
+func ResolveUploadPath(logicalPath string) (string, error) {
+	trimmed := strings.TrimSpace(strings.TrimPrefix(logicalPath, "/"))
+	cleaned := filepath.ToSlash(filepath.Clean(trimmed))
+	if cleaned == "." || cleaned == "" || strings.HasPrefix(cleaned, "../") || strings.Contains(cleaned, "/../") {
+		return "", errors.New("invalid upload path")
+	}
+	if !strings.HasPrefix(cleaned, logicalUploadPrefix) {
+		return "", errors.New("invalid upload path")
+	}
+
+	relative := strings.TrimPrefix(cleaned, logicalUploadPrefix)
+	baseAbs, err := filepath.Abs(filepath.Clean(uploadBaseDir()))
+	if err != nil {
+		return "", err
+	}
+
+	candidate := filepath.Join(baseAbs, filepath.FromSlash(relative))
+	candidateAbs, err := filepath.Abs(candidate)
+	if err != nil {
+		return "", err
+	}
+	if candidateAbs != baseAbs && !strings.HasPrefix(candidateAbs, baseAbs+string(os.PathSeparator)) {
+		return "", errors.New("invalid upload path")
+	}
+
+	return candidateAbs, nil
 }

@@ -165,11 +165,11 @@ func setupCollection() *handler.CollectionHandler {
 }
 
 func serveOriginalImage(c *gin.Context) {
-	serveImage(c, "./data/uploads/originals", c.Param("filepath"))
+	serveImage(c, filepath.Join(service.UploadBaseDir(), "originals"), c.Param("filepath"))
 }
 
 func serveThumbnailImage(c *gin.Context) {
-	serveImage(c, "./data/uploads/thumbnails", c.Param("filepath"))
+	serveImage(c, filepath.Join(service.UploadBaseDir(), "thumbnails"), c.Param("filepath"))
 }
 
 func serveImage(c *gin.Context, rootDir, rawPath string) {

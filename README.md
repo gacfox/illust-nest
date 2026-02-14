@@ -70,6 +70,9 @@ database:
   driver: sqlite # 固定值，目前仅支持sqlite数据库
   path: ./data/illust-nest.db # 创建数据库文件的路径
 
+storage:
+  upload_base_dir: ./data/uploads # 图片的存储路径
+
 web:
   static_dir: ./frontend/dist # 静态资源文件夹的路径，部署时需要指定为Vite编译产物的目录
 ```

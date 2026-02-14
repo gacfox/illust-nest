@@ -12,6 +12,7 @@ type Config struct {
 	Database DatabaseConfig `yaml:"database"`
 	JWT      JWTConfig      `yaml:"jwt"`
 	Web      WebConfig      `yaml:"web"`
+	Storage  StorageConfig  `yaml:"storage"`
 }
 
 type ServerConfig struct {
@@ -33,6 +34,10 @@ type WebConfig struct {
 	StaticDir string `yaml:"static_dir"`
 }
 
+type StorageConfig struct {
+	UploadBaseDir string `yaml:"upload_base_dir"`
+}
+
 var GlobalConfig Config
 
 func Load(configPath string) error {
@@ -47,6 +52,9 @@ func Load(configPath string) error {
 
 	if GlobalConfig.Web.StaticDir == "" {
 		GlobalConfig.Web.StaticDir = "./frontend/dist"
+	}
+	if GlobalConfig.Storage.UploadBaseDir == "" {
+		GlobalConfig.Storage.UploadBaseDir = "./data/uploads"
 	}
 
 	return nil

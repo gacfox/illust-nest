@@ -2,13 +2,16 @@ server:
   port: 8080
   mode: debug
 
+jwt:
+  secret: dev-secret-key-change-in-production
+  expire_hours: 168
+
 database:
   driver: sqlite
   path: ./data/illust-nest.db
 
-jwt:
-  secret: dev-secret-key-change-in-production
-  expire_hours: 168
+storage:
+  upload_base_dir: ./data/uploads
 
 web:
   static_dir: ./frontend/dist

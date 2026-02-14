@@ -121,16 +121,8 @@ func (h *PublicHandler) servePublicImage(c *gin.Context, prefix string, isThumbn
 		return
 	}
 
-	dataRoot := filepath.Clean("./data")
-	dataRootAbs, err := filepath.Abs(dataRoot)
+	fullPathAbs, err := service.ResolveUploadPath(relativePath)
 	if err != nil {
-		InternalError(c)
-		return
-	}
-
-	fullPath := filepath.Join(dataRoot, filepath.FromSlash(relativePath))
-	fullPathAbs, err := filepath.Abs(fullPath)
-	if err != nil || (fullPathAbs != dataRootAbs && !strings.HasPrefix(fullPathAbs, dataRootAbs+string(os.PathSeparator))) {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
