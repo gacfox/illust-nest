@@ -9,6 +9,7 @@ import { WorkPreviewPage } from "@/pages/WorkPreviewPage";
 import { TagsPage } from "@/pages/TagsPage";
 import { CollectionsPage } from "@/pages/CollectionsPage";
 import { CollectionWorksPage } from "@/pages/CollectionWorksPage";
+import { WorkExportPage } from "@/pages/WorkExportPage";
 
 export function RoutesView() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -35,6 +36,7 @@ export function RoutesView() {
         element={requireAuth(<WorkPreviewPage />)}
       />
       <Route path="/works/:id" element={requireAuth(<WorkEditPage />)} />
+      <Route path="/works/export" element={requireAuth(<WorkExportPage />)} />
       <Route path="/collections" element={requireAuth(<CollectionsPage />)} />
       <Route
         path="/collections/:id/works"

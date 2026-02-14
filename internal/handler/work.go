@@ -1,8 +1,14 @@
 package handler
 
 import (
+	"archive/zip"
 	"illust-nest/internal/service"
+	"io"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -64,15 +70,15 @@ func (h *WorkHandler) List(c *gin.Context) {
 	}
 
 	params := &service.WorkListParams{
-		Page:       page,
-		PageSize:   pageSize,
-		Keyword:    c.Query("keyword"),
-		TagIDs:     tagIDs,
-		RatingMin:  ratingMin,
-		RatingMax:  ratingMax,
-		IsPublic:   isPublic,
-		SortBy:     c.DefaultQuery("sort_by", "created_at"),
-		SortOrder:  c.DefaultQuery("sort_order", "desc"),
+		Page:      page,
+		PageSize:  pageSize,
+		Keyword:   c.Query("keyword"),
+		TagIDs:    tagIDs,
+		RatingMin: ratingMin,
+		RatingMax: ratingMax,
+		IsPublic:  isPublic,
+		SortBy:    c.DefaultQuery("sort_by", "created_at"),
+		SortOrder: c.DefaultQuery("sort_order", "desc"),
 	}
 
 	result, err := h.workService.GetWorks(params)
@@ -355,4 +361,61 @@ func (h *WorkHandler) BatchUpdatePublic(c *gin.Context) {
 	}
 
 	Success(c, &BatchUpdatePublicResponse{UpdatedCount: count})
+}
+
+func (h *WorkHandler) ExportImages(c *gin.Context) {
+	paths, err := h.workService.ListExportImagePaths()
+	if err != nil {
+		InternalError(c)
+		return
+	}
+
+	filename := "illust-nest-images-" + time.Now().Format("20060102-150405") + ".zip"
+	c.Header("Content-Type", "application/zip")
+	c.Header("Content-Disposition", `attachment; filename="`+filename+`"`)
+	c.Status(200)
+
+	zipWriter := zip.NewWriter(c.Writer)
+	defer zipWriter.Close()
+
+	dataRoot := filepath.Clean("./data")
+	dataRootAbs, absErr := filepath.Abs(dataRoot)
+	if absErr != nil {
+		return
+	}
+
+	added := make(map[string]struct{}, len(paths))
+	for _, storagePath := range paths {
+		cleanPath := filepath.Clean(storagePath)
+		if cleanPath == "." || cleanPath == "" || strings.HasPrefix(cleanPath, "..") {
+			continue
+		}
+		fullPath := filepath.Join(dataRoot, cleanPath)
+		fullPathAbs, err := filepath.Abs(fullPath)
+		if err != nil {
+			continue
+		}
+		if fullPathAbs != dataRootAbs && !strings.HasPrefix(fullPathAbs, dataRootAbs+string(os.PathSeparator)) {
+			continue
+		}
+		if _, exists := added[fullPathAbs]; exists {
+			continue
+		}
+
+		file, err := os.Open(fullPathAbs)
+		if err != nil {
+			continue
+		}
+
+		entryName := filepath.ToSlash(cleanPath)
+		entryWriter, err := zipWriter.Create(entryName)
+		if err != nil {
+			file.Close()
+			continue
+		}
+
+		_, _ = io.Copy(entryWriter, file)
+		file.Close()
+		added[fullPathAbs] = struct{}{}
+	}
 }

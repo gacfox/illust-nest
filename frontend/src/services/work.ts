@@ -50,6 +50,11 @@ export const workService = {
     api.put<ApiResponse<void>>(`/api/works/${id}/images/order`, {
       image_ids: imageIds,
     }),
+
+  exportImages: () =>
+    api.get("/api/works/export/images", {
+      responseType: "blob",
+    }),
 };
 
 export const imageService = {

@@ -321,6 +321,23 @@ func (s *WorkService) ParseTagIDs(tagIDsStr string) ([]uint, error) {
 	return tagIDs, nil
 }
 
+func (s *WorkService) ListExportImagePaths() ([]string, error) {
+	images, err := s.workRepo.FindAllImages()
+	if err != nil {
+		return nil, err
+	}
+
+	paths := make([]string, 0, len(images))
+	for _, image := range images {
+		if image.StoragePath == "" {
+			continue
+		}
+		paths = append(paths, image.StoragePath)
+	}
+
+	return paths, nil
+}
+
 func splitString(s, sep string) []string {
 	if s == "" {
 		return []string{}

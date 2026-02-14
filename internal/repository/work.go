@@ -277,3 +277,12 @@ func (r *WorkRepository) Count() (int64, error) {
 	err := r.DB.Model(&model.Work{}).Count(&count).Error
 	return count, err
 }
+
+func (r *WorkRepository) FindAllImages() ([]model.WorkImage, error) {
+	var images []model.WorkImage
+	err := r.DB.Model(&model.WorkImage{}).
+		Select("storage_path, created_at").
+		Order("created_at ASC").
+		Find(&images).Error
+	return images, err
+}
