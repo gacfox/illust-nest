@@ -86,6 +86,13 @@ export function WorkPreviewPage() {
   const lightboxStageRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
   const pendingOffset = useRef({ x: 0, y: 0 });
+  const activePointersRef = useRef<Map<number, { x: number; y: number }>>(
+    new Map(),
+  );
+  const pinchStartDistanceRef = useRef<number | null>(null);
+  const pinchStartZoomRef = useRef(1);
+  const pinchStartOffsetRef = useRef({ x: 0, y: 0 });
+  const pinchStartCenterRef = useRef({ x: 0, y: 0 });
 
   useEffect(() => {
     if (!workId) {
@@ -270,15 +277,36 @@ export function WorkPreviewPage() {
     setOffset({ x: 0, y: 0 });
   };
 
+  const clearPointerState = () => {
+    activePointersRef.current.clear();
+    pinchStartDistanceRef.current = null;
+  };
+
+  const getPointerMetrics = (pointers: { x: number; y: number }[]) => {
+    const [p1, p2] = pointers;
+    const dx = p2.x - p1.x;
+    const dy = p2.y - p1.y;
+    return {
+      distance: Math.hypot(dx, dy),
+      center: {
+        x: (p1.x + p2.x) / 2,
+        y: (p1.y + p2.y) / 2,
+      },
+    };
+  };
+
   const openLightbox = (index: number) => {
     setLightboxIndex(index);
     setLightboxOpen(true);
     resetTransform();
+    clearPointerState();
   };
 
   const closeLightbox = () => {
     setLightboxOpen(false);
     resetTransform();
+    setDragging(false);
+    clearPointerState();
   };
 
   const goPrev = () => {
@@ -639,21 +667,64 @@ export function WorkPreviewPage() {
 
           <div
             ref={lightboxStageRef}
-            className="absolute inset-0 z-10 flex items-center justify-center"
+            className="absolute inset-0 z-10 flex touch-none items-center justify-center"
             onDragStart={(e) => e.preventDefault()}
             onPointerDown={(e) => {
               e.preventDefault();
               if ((e.target as HTMLElement).tagName === "BUTTON") {
                 return;
               }
+              activePointersRef.current.set(e.pointerId, {
+                x: e.clientX,
+                y: e.clientY,
+              });
               e.currentTarget.setPointerCapture(e.pointerId);
-              setDragging(true);
-              dragStart.current = {
-                x: e.clientX - offset.x,
-                y: e.clientY - offset.y,
-              };
+              const pointers = Array.from(activePointersRef.current.values());
+              if (pointers.length === 1) {
+                setDragging(true);
+                dragStart.current = {
+                  x: e.clientX - offset.x,
+                  y: e.clientY - offset.y,
+                };
+                pinchStartDistanceRef.current = null;
+                return;
+              }
+              if (pointers.length === 2) {
+                const { distance, center } = getPointerMetrics(pointers);
+                pinchStartDistanceRef.current = distance;
+                pinchStartZoomRef.current = zoom;
+                pinchStartOffsetRef.current = offset;
+                pinchStartCenterRef.current = center;
+                setDragging(false);
+              }
             }}
             onPointerMove={(e) => {
+              if (!activePointersRef.current.has(e.pointerId)) return;
+              activePointersRef.current.set(e.pointerId, {
+                x: e.clientX,
+                y: e.clientY,
+              });
+
+              const pointers = Array.from(activePointersRef.current.values());
+              if (pointers.length === 2 && pinchStartDistanceRef.current) {
+                const { distance, center } = getPointerMetrics(pointers);
+                const scale = distance / pinchStartDistanceRef.current;
+                const nextZoom = Math.min(
+                  3,
+                  Math.max(1, pinchStartZoomRef.current * scale),
+                );
+                setZoom(nextZoom);
+                setOffset({
+                  x:
+                    pinchStartOffsetRef.current.x +
+                    (center.x - pinchStartCenterRef.current.x),
+                  y:
+                    pinchStartOffsetRef.current.y +
+                    (center.y - pinchStartCenterRef.current.y),
+                });
+                return;
+              }
+
               if (!dragging) return;
               pendingOffset.current = {
                 x: e.clientX - dragStart.current.x,
@@ -666,9 +737,36 @@ export function WorkPreviewPage() {
                 });
               }
             }}
-            onPointerUp={() => setDragging(false)}
-            onPointerCancel={() => setDragging(false)}
-            onLostPointerCapture={() => setDragging(false)}
+            onPointerUp={(e) => {
+              activePointersRef.current.delete(e.pointerId);
+              const pointers = Array.from(activePointersRef.current.values());
+              if (pointers.length === 1) {
+                const [point] = pointers;
+                setDragging(true);
+                dragStart.current = {
+                  x: point.x - offset.x,
+                  y: point.y - offset.y,
+                };
+                pinchStartDistanceRef.current = null;
+                return;
+              }
+              setDragging(false);
+              pinchStartDistanceRef.current = null;
+            }}
+            onPointerCancel={(e) => {
+              activePointersRef.current.delete(e.pointerId);
+              if (activePointersRef.current.size === 0) {
+                setDragging(false);
+                pinchStartDistanceRef.current = null;
+              }
+            }}
+            onLostPointerCapture={(e) => {
+              activePointersRef.current.delete(e.pointerId);
+              if (activePointersRef.current.size === 0) {
+                setDragging(false);
+                pinchStartDistanceRef.current = null;
+              }
+            }}
           >
             <div
               style={{
