@@ -4,6 +4,14 @@ import { useAuthStore, useSystemStore } from "@/stores";
 import { useTheme } from "@/components/ThemeProvider";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Images,
   Download,
   FolderKanban,
@@ -114,14 +122,37 @@ export function AdminLayout({
           <Menu className="h-5 w-5" />
         </Button>
         <div className="text-sm font-semibold">{title}</div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleTheme}
-          aria-label="切换主题"
-        >
-          {getThemeIcon()}
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            aria-label="切换主题"
+          >
+            {getThemeIcon()}
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="用户菜单">
+                <UserCircle2 className="h-5 w-5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuLabel className="truncate">
+                {user?.username || "管理员"}
+              </DropdownMenuLabel>
+              {onLogout && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={onLogout}>
+                    <LogOut className="h-4 w-4" />
+                    退出
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       {mobileOpen && (
@@ -233,18 +264,27 @@ export function AdminLayout({
               >
                 {getThemeIcon("h-5 w-5")}
               </Button>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <UserCircle2 className="h-5 w-5" />
-                <span className="text-foreground">
-                  {user?.username || "管理员"}
-                </span>
-              </div>
-              {onLogout && (
-                <Button variant="ghost" size="sm" onClick={onLogout}>
-                  <LogOut className="h-4 w-4 mr-1" />
-                  退出
-                </Button>
-              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" aria-label="用户菜单">
+                    <UserCircle2 className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-44">
+                  <DropdownMenuLabel className="truncate">
+                    {user?.username || "管理员"}
+                  </DropdownMenuLabel>
+                  {onLogout && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={onLogout}>
+                        <LogOut className="h-4 w-4" />
+                        退出
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </header>
 
