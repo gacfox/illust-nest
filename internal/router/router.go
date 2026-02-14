@@ -165,24 +165,41 @@ func setupCollection() *handler.CollectionHandler {
 }
 
 func serveOriginalImage(c *gin.Context) {
-	filepath := c.Param("filepath")
-	fullPath := "./data/uploads/originals" + filepath
-	serveImage(c, fullPath)
+	serveImage(c, "./data/uploads/originals", c.Param("filepath"))
 }
 
 func serveThumbnailImage(c *gin.Context) {
-	filepath := c.Param("filepath")
-	fullPath := "./data/uploads/thumbnails" + filepath
-	serveImage(c, fullPath)
+	serveImage(c, "./data/uploads/thumbnails", c.Param("filepath"))
 }
 
-func serveImage(c *gin.Context, fullPath string) {
-	if !strings.HasPrefix(fullPath, "./data/uploads/") {
-		c.String(http.StatusForbidden, "access denied")
+func serveImage(c *gin.Context, rootDir, rawPath string) {
+	trimmed := strings.TrimSpace(strings.TrimPrefix(rawPath, "/"))
+	cleaned := filepath.ToSlash(filepath.Clean(trimmed))
+	if cleaned == "." || cleaned == "" || strings.HasPrefix(cleaned, "../") || strings.Contains(cleaned, "/../") {
+		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
 
-	c.FileAttachment(fullPath, "")
+	rootAbs, err := filepath.Abs(filepath.Clean(rootDir))
+	if err != nil {
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
+	candidate := filepath.Join(rootAbs, filepath.FromSlash(cleaned))
+	candidateAbs, err := filepath.Abs(candidate)
+	if err != nil || (candidateAbs != rootAbs && !strings.HasPrefix(candidateAbs, rootAbs+string(os.PathSeparator))) {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+
+	fileInfo, err := os.Stat(candidateAbs)
+	if err != nil || fileInfo.IsDir() {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+
+	c.FileAttachment(candidateAbs, "")
 	c.Header("Cache-Control", "max-age=31536000")
 }
 
