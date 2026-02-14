@@ -3,6 +3,14 @@ import { authService } from "@/services";
 import { useAuthStore } from "@/stores";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -37,49 +45,49 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <h2 className="mt-6 text-3xl font-bold text-foreground">
-            Illust Nest
-          </h2>
-          <p className="mt-2 text-sm text-muted-foreground">登录您的账户</p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-destructive/10 text-destructive px-4 py-3 rounded-lg text-sm">
-              {error}
+    <div className="flex min-h-svh items-center justify-center bg-background px-4 py-8 text-foreground sm:px-6 md:px-8">
+      <Card className="w-full max-w-sm sm:max-w-md md:max-w-lg">
+        <CardHeader className="space-y-2 text-center">
+          <CardTitle className="text-2xl sm:text-3xl">Illust Nest</CardTitle>
+          <CardDescription>登录您的账户</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form className="space-y-5" onSubmit={handleSubmit}>
+            {error && (
+              <div className="rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                {error}
+              </div>
+            )}
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="username">用户名</Label>
+                <Input
+                  id="username"
+                  type="text"
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">密码</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
             </div>
-          )}
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="username">用户名</Label>
-              <Input
-                id="username"
-                type="text"
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label htmlFor="password">密码</Label>
-              <Input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-          </div>
-          <Button type="submit" disabled={loading} className="w-full">
-            {loading ? "登录中..." : "登录"}
-          </Button>
-        </form>
-      </div>
+            <CardFooter className="px-0 pt-1">
+              <Button type="submit" disabled={loading} className="w-full">
+                {loading ? "登录中..." : "登录"}
+              </Button>
+            </CardFooter>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
