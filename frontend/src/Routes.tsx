@@ -10,6 +10,7 @@ import { TagsPage } from "@/pages/TagsPage";
 import { CollectionsPage } from "@/pages/CollectionsPage";
 import { CollectionWorksPage } from "@/pages/CollectionWorksPage";
 import { WorkExportPage } from "@/pages/WorkExportPage";
+import { NotFoundPage } from "@/pages/NotFoundPage";
 
 export function RoutesView() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -44,7 +45,7 @@ export function RoutesView() {
       />
       <Route path="/tags" element={requireAuth(<TagsPage />)} />
       <Route path="/settings" element={requireAuth(<SettingsPage />)} />
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<NotFoundPage />} />
     </Routes>
   );
 }
