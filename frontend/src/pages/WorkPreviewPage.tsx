@@ -18,6 +18,8 @@ import {
   Check,
   Pencil,
   Trash2,
+  Link2,
+  Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -54,6 +56,19 @@ function formatDateTime(value?: string) {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(
     date.getHours(),
   )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+}
+
+function normalizePublicImagePath(path: string, isThumbnail: boolean) {
+  if (!path) return "";
+  let cleaned = path.startsWith("/") ? path.slice(1) : path;
+  const prefix = isThumbnail ? "uploads/thumbnails/" : "uploads/originals/";
+  if (cleaned.startsWith(prefix)) {
+    cleaned = cleaned.slice(prefix.length);
+  }
+  const apiPrefix = isThumbnail
+    ? "/api/public/images/thumbnails"
+    : "/api/public/images/originals";
+  return `${apiPrefix}/${cleaned}`;
 }
 
 export function WorkPreviewPage() {
@@ -271,6 +286,39 @@ export function WorkPreviewPage() {
     previewSource.collectionName.trim() !== ""
       ? previewSource.collectionName
       : "作品集";
+  const publicImageLinks = useMemo(() => {
+    const origin = typeof window !== "undefined" ? window.location.origin : "";
+    return images
+      .map((img) => {
+        const isThumbnail = !img.original_path && !!img.thumbnail_path;
+        const rawPath = img.original_path || img.thumbnail_path;
+        const normalized = normalizePublicImagePath(rawPath, isThumbnail);
+        if (!normalized) {
+          return "";
+        }
+        return origin ? `${origin}${normalized}` : normalized;
+      })
+      .filter((item) => item !== "");
+  }, [images]);
+
+  const writeToClipboard = async (text: string) => {
+    if (!text) {
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      document.execCommand("copy");
+      document.body.removeChild(textarea);
+    }
+  };
 
   const resetTransform = () => {
     setZoom(1);
@@ -453,6 +501,45 @@ export function WorkPreviewPage() {
                 <span className="text-xs text-muted-foreground">无标签</span>
               )}
             </div>
+
+            {work.is_public && publicImageLinks.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">
+                  图片链接（公开）
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {publicImageLinks.map((link, index) => (
+                    <Badge
+                      key={`${link}-${index}`}
+                      variant="secondary"
+                      className="cursor-pointer select-none"
+                      onClick={async () => {
+                        await writeToClipboard(link);
+                        toast.success(`已复制图片链接 ${index + 1}`);
+                      }}
+                    >
+                      <Link2 className="h-3.5 w-3.5 mr-1" />
+                      复制链接 P{index + 1}
+                    </Badge>
+                  ))}
+                  {publicImageLinks.length > 1 && (
+                    <Badge
+                      variant="secondary"
+                      className="cursor-pointer select-none"
+                      onClick={async () => {
+                        await writeToClipboard(publicImageLinks.join("\n"));
+                        toast.success(
+                          `已复制全部链接（${publicImageLinks.length} 条）`,
+                        );
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5 mr-1" />
+                      复制全部
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
