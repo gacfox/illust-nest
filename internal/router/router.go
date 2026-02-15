@@ -41,6 +41,7 @@ func Setup() *gin.Engine {
 		system.GET("/settings", middleware.Auth(), systemHandler.GetSettings)
 		system.PUT("/settings", middleware.Auth(), systemHandler.UpdateSettings)
 		system.GET("/statistics", middleware.Auth(), systemHandler.GetStatistics)
+		system.GET("/imagemagick/test", middleware.Auth(), systemHandler.TestImageMagick)
 	}
 
 	auth := r.Group("/api/auth")
@@ -153,7 +154,8 @@ func setupSystem() *handler.SystemHandler {
 func setupWork() *handler.WorkHandler {
 	workRepo := repository.NewWorkRepository(database.DB)
 	tagRepo := repository.NewTagRepository(database.DB)
-	imageService := service.NewImageService()
+	settingRepo := repository.NewSettingRepository(database.DB)
+	imageService := service.NewImageService(settingRepo)
 	workService := service.NewWorkService(workRepo, tagRepo, imageService)
 	return handler.NewWorkHandler(workService, imageService)
 }
@@ -161,7 +163,8 @@ func setupWork() *handler.WorkHandler {
 func setupPublic() *handler.PublicHandler {
 	workRepo := repository.NewWorkRepository(database.DB)
 	tagRepo := repository.NewTagRepository(database.DB)
-	imageService := service.NewImageService()
+	settingRepo := repository.NewSettingRepository(database.DB)
+	imageService := service.NewImageService(settingRepo)
 	workService := service.NewWorkService(workRepo, tagRepo, imageService)
 	return handler.NewPublicHandler(workService)
 }

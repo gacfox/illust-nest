@@ -136,7 +136,7 @@ export function WorkEditPage() {
     const droppedFiles = e.dataTransfer.files;
     if (droppedFiles.length > 0) {
       const imageFiles = Array.from(droppedFiles).filter((file) =>
-        file.type.startsWith("image/"),
+        isSupportedUploadFile(file),
       );
       if (imageFiles.length === 0) {
         toast.error("请拖拽图片文件");
@@ -288,8 +288,17 @@ export function WorkEditPage() {
       }
     } catch (err) {
       console.error("保存失败", err);
+      const backendMessage =
+        typeof err === "object" &&
+        err !== null &&
+        "response" in err &&
+        typeof (err as { response?: { data?: { message?: string } } }).response
+          ?.data?.message === "string"
+          ? (err as { response?: { data?: { message?: string } } }).response!
+              .data!.message!
+          : "";
       toast.error("保存失败", {
-        description: "请检查网络连接或稍后重试",
+        description: backendMessage || "请检查网络连接或稍后重试",
       });
     } finally {
       setSaving(false);
@@ -467,7 +476,7 @@ export function WorkEditPage() {
                 id="imageUpload"
                 type="file"
                 multiple
-                accept="image/*"
+                accept="image/*,.psd"
                 className="hidden"
                 onChange={(e) => handleFiles(e.target.files)}
               />
@@ -476,7 +485,7 @@ export function WorkEditPage() {
               </p>
               {!isNew && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  支持 PNG / JPG / GIF / WebP / BMP / TIFF
+                  支持 PNG / JPG / GIF / WebP / BMP / TIFF / PSD
                 </p>
               )}
             </label>
@@ -788,9 +797,31 @@ function shouldShowTranscodePlaceholder(file: File): boolean {
     mime === "image/tiff" ||
     mime === "image/bmp" ||
     mime === "image/x-ms-bmp" ||
+    mime === "image/psd" ||
+    mime === "image/x-psd" ||
+    mime === "image/photoshop" ||
+    mime === "image/x-photoshop" ||
+    mime === "application/photoshop" ||
+    mime === "application/x-photoshop" ||
+    mime === "application/psd" ||
     ext === "tif" ||
     ext === "tiff" ||
     ext === "bmp" ||
-    ext === "dib"
+    ext === "dib" ||
+    ext === "psd"
+  );
+}
+
+function isSupportedUploadFile(file: File): boolean {
+  const mime = file.type.toLowerCase();
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  if (mime.startsWith("image/")) {
+    return true;
+  }
+  return (
+    ext === "psd" ||
+    mime === "application/photoshop" ||
+    mime === "application/x-photoshop" ||
+    mime === "application/psd"
   );
 }

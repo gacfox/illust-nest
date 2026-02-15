@@ -5,6 +5,7 @@ import type {
   InitRequest,
   SystemSettings,
   SystemStatistics,
+  ImageMagickTestResult,
 } from "@/types/api";
 
 export const systemService = {
@@ -21,4 +22,12 @@ export const systemService = {
 
   getStatistics: () =>
     api.get<ApiResponse<SystemStatistics>>("/api/system/statistics"),
+
+  testImageMagick: (version?: "v6" | "v7") =>
+    api.get<ApiResponse<ImageMagickTestResult>>(
+      "/api/system/imagemagick/test",
+      {
+        params: version ? { version } : undefined,
+      },
+    ),
 };

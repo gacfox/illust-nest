@@ -33,6 +33,14 @@ type InitRequest struct {
 type SystemSettings struct {
 	PublicGalleryEnabled bool   `json:"public_gallery_enabled"`
 	SiteTitle            string `json:"site_title"`
+	ImageMagickEnabled   bool   `json:"imagemagick_enabled"`
+	ImageMagickVersion   string `json:"imagemagick_version"`
+}
+
+type ImageMagickTestResult struct {
+	Available bool   `json:"available"`
+	Command   string `json:"command"`
+	Message   string `json:"message"`
 }
 
 type SystemStatistics struct {

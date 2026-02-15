@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"illust-nest/internal/config"
+	"illust-nest/internal/repository"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
@@ -30,21 +31,30 @@ const (
 )
 
 var allowedUploadFormats = map[string]struct{}{
-	"image/jpeg":     {},
-	"image/png":      {},
-	"image/gif":      {},
-	"image/webp":     {},
-	"image/bmp":      {},
-	"image/x-ms-bmp": {},
-	"image/tiff":     {},
+	"image/jpeg":              {},
+	"image/png":               {},
+	"image/gif":               {},
+	"image/webp":              {},
+	"image/bmp":               {},
+	"image/x-ms-bmp":          {},
+	"image/tiff":              {},
+	"image/psd":               {},
+	"image/x-psd":             {},
+	"image/photoshop":         {},
+	"image/x-photoshop":       {},
+	"application/photoshop":   {},
+	"application/x-photoshop": {},
+	"application/psd":         {},
 }
 
 const logicalUploadPrefix = "uploads/"
 
-type ImageService struct{}
+type ImageService struct {
+	settingRepo *repository.SettingRepository
+}
 
-func NewImageService() *ImageService {
-	return &ImageService{}
+func NewImageService(settingRepo *repository.SettingRepository) *ImageService {
+	return &ImageService{settingRepo: settingRepo}
 }
 
 func (s *ImageService) UploadImages(files []*multipart.FileHeader) ([]*UploadedImage, error) {
@@ -62,6 +72,10 @@ func (s *ImageService) UploadImages(files []*multipart.FileHeader) ([]*UploadedI
 }
 
 func (s *ImageService) processImage(file *multipart.FileHeader) (*UploadedImage, error) {
+	if shouldUseImageMagickForUpload(file) {
+		return s.processImageWithImageMagick(file)
+	}
+
 	src, err := file.Open()
 	if err != nil {
 		return nil, err
@@ -134,6 +148,78 @@ func (s *ImageService) processImage(file *multipart.FileHeader) (*UploadedImage,
 	}, nil
 }
 
+func (s *ImageService) processImageWithImageMagick(file *multipart.FileHeader) (*UploadedImage, error) {
+	cfg, err := s.getImageMagickSettings()
+	if err != nil {
+		return nil, err
+	}
+	if !cfg.Enabled {
+		return nil, errors.New("ImageMagick integration is disabled. Please enable it in System Settings")
+	}
+
+	src, err := file.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer src.Close()
+
+	uuid := generateUUID()
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext == "" {
+		ext = ".psd"
+	}
+	originalPath, originalLogicalPath := s.getStoragePath("originals", uuid, ext)
+	thumbnailPath, thumbnailLogicalPath := s.getStoragePath("thumbnails", uuid, ".jpg")
+	transcodedPath, transcodedLogicalPath := s.getStoragePath("transcoded", uuid+"-transcoded", ".jpg")
+
+	for _, dir := range []string{
+		filepath.Dir(originalPath),
+		filepath.Dir(thumbnailPath),
+		filepath.Dir(transcodedPath),
+	} {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return nil, err
+		}
+	}
+
+	dst, err := os.Create(originalPath)
+	if err != nil {
+		return nil, err
+	}
+	if _, err := io.Copy(dst, src); err != nil {
+		dst.Close()
+		return nil, err
+	}
+	if err := dst.Close(); err != nil {
+		return nil, err
+	}
+
+	input := originalPath + "[0]"
+	if err := runImageMagick(cfg.Version, input, "-auto-orient", "-flatten", "-quality", "92", transcodedPath); err != nil {
+		return nil, fmt.Errorf("ImageMagick transcoding failed: %w", err)
+	}
+	if err := runImageMagick(cfg.Version, input, "-auto-orient", "-flatten", "-thumbnail", "400x", "-quality", "85", thumbnailPath); err != nil {
+		return nil, fmt.Errorf("ImageMagick thumbnail generation failed: %w", err)
+	}
+
+	transcodedImg, err := imaging.Open(transcodedPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open transcoded image: %w", err)
+	}
+	width := transcodedImg.Bounds().Dx()
+	height := transcodedImg.Bounds().Dy()
+
+	return &UploadedImage{
+		StoragePath:      originalLogicalPath,
+		ThumbnailPath:    thumbnailLogicalPath,
+		TranscodedPath:   transcodedLogicalPath,
+		FileSize:         file.Size,
+		Width:            width,
+		Height:           height,
+		OriginalFilename: file.Filename,
+	}, nil
+}
+
 func (s *ImageService) getStoragePath(subDir, uuid, ext string) (string, string) {
 	now := time.Now()
 	year := now.Format("2006")
@@ -187,6 +273,42 @@ func shouldTranscodeOriginal(format, ext, contentType string) bool {
 
 	cleanType := strings.ToLower(strings.TrimSpace(contentType))
 	return cleanType == "image/bmp" || cleanType == "image/x-ms-bmp" || cleanType == "image/tiff"
+}
+
+type imageMagickSettings struct {
+	Enabled bool
+	Version string
+}
+
+func (s *ImageService) getImageMagickSettings() (*imageMagickSettings, error) {
+	settings := &imageMagickSettings{
+		Enabled: false,
+		Version: ImageMagickVersionV7,
+	}
+	if s.settingRepo == nil {
+		return settings, nil
+	}
+
+	if enabled, err := s.settingRepo.Get("imagemagick_enabled"); err == nil {
+		settings.Enabled = enabled.Value == "true"
+	}
+	if version, err := s.settingRepo.Get("imagemagick_version"); err == nil {
+		settings.Version = normalizeImageMagickVersion(version.Value)
+	}
+	return settings, nil
+}
+
+func shouldUseImageMagickForUpload(file *multipart.FileHeader) bool {
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	contentType := strings.ToLower(strings.TrimSpace(file.Header.Get("Content-Type")))
+	if ext == ".psd" {
+		return true
+	}
+	switch contentType {
+	case "image/psd", "image/x-psd", "image/photoshop", "image/x-photoshop", "application/photoshop", "application/x-photoshop", "application/psd":
+		return true
+	}
+	return false
 }
 
 func generateUUID() string {

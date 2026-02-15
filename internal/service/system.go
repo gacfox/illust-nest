@@ -4,6 +4,7 @@ import (
 	"illust-nest/internal/middleware"
 	"illust-nest/internal/repository"
 	"sort"
+	"strings"
 )
 
 type SystemService struct {
@@ -90,7 +91,9 @@ func (s *SystemService) Init(req *InitRequest) (*LoginResponse, error) {
 
 func (s *SystemService) GetSettings() (*SystemSettings, error) {
 	settings := &SystemSettings{
-		SiteTitle: "Illust Nest",
+		SiteTitle:          "Illust Nest",
+		ImageMagickEnabled: false,
+		ImageMagickVersion: ImageMagickVersionV7,
 	}
 
 	if enabled, err := s.settingRepo.Get("public_gallery_enabled"); err == nil {
@@ -99,6 +102,12 @@ func (s *SystemService) GetSettings() (*SystemSettings, error) {
 
 	if title, err := s.settingRepo.Get("site_title"); err == nil {
 		settings.SiteTitle = title.Value
+	}
+	if enabled, err := s.settingRepo.Get("imagemagick_enabled"); err == nil {
+		settings.ImageMagickEnabled = enabled.Value == "true"
+	}
+	if version, err := s.settingRepo.Get("imagemagick_version"); err == nil {
+		settings.ImageMagickVersion = normalizeImageMagickVersion(version.Value)
 	}
 
 	return settings, nil
@@ -111,7 +120,43 @@ func (s *SystemService) UpdateSettings(settings *SystemSettings) error {
 	if err := s.settingRepo.Set("site_title", settings.SiteTitle); err != nil {
 		return err
 	}
+	settings.ImageMagickVersion = normalizeImageMagickVersion(settings.ImageMagickVersion)
+	if err := s.settingRepo.Set("imagemagick_enabled", boolToString(settings.ImageMagickEnabled)); err != nil {
+		return err
+	}
+	if err := s.settingRepo.Set("imagemagick_version", settings.ImageMagickVersion); err != nil {
+		return err
+	}
 	return nil
+}
+
+func (s *SystemService) TestImageMagickCommand(versionOverride string) (*ImageMagickTestResult, error) {
+	version := normalizeImageMagickVersion(versionOverride)
+	if strings.TrimSpace(versionOverride) == "" {
+		settings, err := s.GetSettings()
+		if err != nil {
+			return nil, err
+		}
+		version = normalizeImageMagickVersion(settings.ImageMagickVersion)
+	}
+	command, err := resolveImageMagickCommand(version)
+	if err != nil {
+		return nil, err
+	}
+
+	message, err := testImageMagickCommand(version)
+	if err != nil {
+		return &ImageMagickTestResult{
+			Available: false,
+			Command:   command,
+			Message:   err.Error(),
+		}, nil
+	}
+	return &ImageMagickTestResult{
+		Available: true,
+		Command:   command,
+		Message:   message,
+	}, nil
 }
 
 func (s *SystemService) GetStatistics() (*SystemStatistics, error) {

@@ -93,10 +93,7 @@ func InitializeDefaultData() error {
 		if err != nil {
 			return err
 		}
-		if setting.Value == "true" {
-			return nil
-		}
-		return nil
+		return ensureOptionalSettings()
 	}
 
 	transaction := DB.Begin()
@@ -120,6 +117,14 @@ func InitializeDefaultData() error {
 		transaction.Rollback()
 		return err
 	}
+	if err := transaction.Create(&model.Setting{Key: "imagemagick_enabled", Value: "false"}).Error; err != nil {
+		transaction.Rollback()
+		return err
+	}
+	if err := transaction.Create(&model.Setting{Key: "imagemagick_version", Value: "v7"}).Error; err != nil {
+		transaction.Rollback()
+		return err
+	}
 
 	systemTags := []model.Tag{
 		{Name: "AI", IsSystem: true},
@@ -133,5 +138,26 @@ func InitializeDefaultData() error {
 		}
 	}
 
-	return transaction.Commit().Error
+	if err := transaction.Commit().Error; err != nil {
+		return err
+	}
+	return ensureOptionalSettings()
+}
+
+func ensureOptionalSettings() error {
+	defaults := []model.Setting{
+		{Key: "public_gallery_enabled", Value: "false"},
+		{Key: "site_title", Value: "Illust Nest"},
+		{Key: "imagemagick_enabled", Value: "false"},
+		{Key: "imagemagick_version", Value: "v7"},
+	}
+	for _, item := range defaults {
+		if err := DB.Where("key = ?", item.Key).FirstOrCreate(&model.Setting{
+			Key:   item.Key,
+			Value: item.Value,
+		}).Error; err != nil {
+			return err
+		}
+	}
+	return nil
 }

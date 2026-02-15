@@ -102,3 +102,24 @@ func (h *SystemHandler) GetStatistics(c *gin.Context) {
 
 	Success(c, stats)
 }
+
+func (h *SystemHandler) TestImageMagick(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		Unauthorized(c)
+		return
+	}
+	_ = userID
+
+	version := c.Query("version")
+	result, err := h.systemService.TestImageMagickCommand(version)
+	if err != nil {
+		InternalErrorWithMessage(c, err.Error())
+		return
+	}
+	if !result.Available {
+		BadRequest(c, result.Message)
+		return
+	}
+	Success(c, result)
+}

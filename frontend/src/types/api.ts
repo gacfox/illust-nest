@@ -43,6 +43,14 @@ export interface InitRequest {
 export interface SystemSettings {
   public_gallery_enabled: boolean;
   site_title: string;
+  imagemagick_enabled: boolean;
+  imagemagick_version: "v6" | "v7";
+}
+
+export interface ImageMagickTestResult {
+  available: boolean;
+  command: string;
+  message: string;
 }
 
 export interface SystemStatistics {
