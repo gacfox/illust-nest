@@ -101,6 +101,10 @@ func (h *PublicHandler) GetThumbnailImage(c *gin.Context) {
 	h.servePublicImage(c, "uploads/thumbnails", true)
 }
 
+func (h *PublicHandler) GetTranscodedImage(c *gin.Context) {
+	h.servePublicImage(c, "uploads/transcoded", false)
+}
+
 func (h *PublicHandler) servePublicImage(c *gin.Context, prefix string, isThumbnail bool) {
 	rawPath := strings.TrimSpace(c.Param("filepath"))
 	trimmed := strings.TrimPrefix(rawPath, "/")

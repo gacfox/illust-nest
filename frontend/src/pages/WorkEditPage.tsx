@@ -37,6 +37,7 @@ type UploadItem = {
   file: File;
   previewUrl: string;
   imageHash: string;
+  requiresTranscode: boolean;
 };
 
 export function WorkEditPage() {
@@ -304,6 +305,7 @@ export function WorkEditPage() {
             file,
             previewUrl: URL.createObjectURL(file),
             imageHash,
+            requiresTranscode: shouldShowTranscodePlaceholder(file),
           };
         }),
       );
@@ -474,7 +476,7 @@ export function WorkEditPage() {
               </p>
               {!isNew && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  支持 PNG / JPG / GIF / WebP
+                  支持 PNG / JPG / GIF / WebP / BMP / TIFF
                 </p>
               )}
             </label>
@@ -550,11 +552,20 @@ export function WorkEditPage() {
                     key={item.previewUrl}
                     className="border border-border rounded-lg overflow-hidden"
                   >
-                    <img
-                      src={item.previewUrl}
-                      alt={isNew ? `upload-${index}` : `new-${index}`}
-                      className="w-full aspect-square object-cover"
-                    />
+                    {item.requiresTranscode ? (
+                      <div className="w-full aspect-square bg-muted flex flex-col items-center justify-center text-muted-foreground">
+                        <span className="text-xs">待转码</span>
+                        <span className="text-[11px] mt-1">
+                          {item.file.name}
+                        </span>
+                      </div>
+                    ) : (
+                      <img
+                        src={item.previewUrl}
+                        alt={isNew ? `upload-${index}` : `new-${index}`}
+                        className="w-full aspect-square object-cover"
+                      />
+                    )}
                     <div className="flex items-center justify-between px-2 py-2 text-xs text-muted-foreground">
                       {isNew ? (
                         <div className="flex gap-2">
@@ -768,4 +779,18 @@ async function computeImageHash(file: File): Promise<string> {
   }
   const buffer = await file.arrayBuffer();
   return performDigest(buffer);
+}
+
+function shouldShowTranscodePlaceholder(file: File): boolean {
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const mime = file.type.toLowerCase();
+  return (
+    mime === "image/tiff" ||
+    mime === "image/bmp" ||
+    mime === "image/x-ms-bmp" ||
+    ext === "tif" ||
+    ext === "tiff" ||
+    ext === "bmp" ||
+    ext === "dib"
+  );
 }

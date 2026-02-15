@@ -62,6 +62,7 @@ func Setup() *gin.Engine {
 		publicImages := public.Group("/images")
 		{
 			publicImages.GET("/originals/*filepath", publicHandler.GetOriginalImage)
+			publicImages.GET("/transcoded/*filepath", publicHandler.GetTranscodedImage)
 			publicImages.GET("/thumbnails/*filepath", publicHandler.GetThumbnailImage)
 		}
 	}
@@ -115,6 +116,7 @@ func Setup() *gin.Engine {
 	images.Use(middleware.Auth())
 	{
 		images.GET("/originals/*filepath", serveOriginalImage)
+		images.GET("/transcoded/*filepath", serveTranscodedImage)
 		images.GET("/thumbnails/*filepath", serveThumbnailImage)
 	}
 
@@ -182,6 +184,10 @@ func serveOriginalImage(c *gin.Context) {
 
 func serveThumbnailImage(c *gin.Context) {
 	serveImage(c, filepath.Join(service.UploadBaseDir(), "thumbnails"), c.Param("filepath"))
+}
+
+func serveTranscodedImage(c *gin.Context) {
+	serveImage(c, filepath.Join(service.UploadBaseDir(), "transcoded"), c.Param("filepath"))
 }
 
 func serveImage(c *gin.Context, rootDir, rawPath string) {

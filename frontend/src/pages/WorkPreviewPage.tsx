@@ -58,17 +58,41 @@ function formatDateTime(value?: string) {
   )}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
 }
 
-function normalizePublicImagePath(path: string, isThumbnail: boolean) {
+function normalizePublicImagePath(
+  path: string,
+  kind: "thumbnail" | "original" | "transcoded",
+) {
   if (!path) return "";
   let cleaned = path.startsWith("/") ? path.slice(1) : path;
-  const prefix = isThumbnail ? "uploads/thumbnails/" : "uploads/originals/";
+  const prefixMap: Record<typeof kind, string> = {
+    thumbnail: "uploads/thumbnails/",
+    original: "uploads/originals/",
+    transcoded: "uploads/transcoded/",
+  };
+  const prefix = prefixMap[kind];
   if (cleaned.startsWith(prefix)) {
     cleaned = cleaned.slice(prefix.length);
   }
-  const apiPrefix = isThumbnail
-    ? "/api/public/images/thumbnails"
-    : "/api/public/images/originals";
+  const apiPrefixMap: Record<typeof kind, string> = {
+    thumbnail: "/api/public/images/thumbnails",
+    original: "/api/public/images/originals",
+    transcoded: "/api/public/images/transcoded",
+  };
+  const apiPrefix = apiPrefixMap[kind];
   return `${apiPrefix}/${cleaned}`;
+}
+
+function resolveDisplaySource(img: Image): {
+  path: string;
+  variant: "original" | "thumbnail" | "transcoded";
+} {
+  if (img.transcoded_path) {
+    return { path: img.transcoded_path, variant: "transcoded" };
+  }
+  if (img.original_path) {
+    return { path: img.original_path, variant: "original" };
+  }
+  return { path: img.thumbnail_path, variant: "thumbnail" };
 }
 
 export function WorkPreviewPage() {
@@ -273,6 +297,7 @@ export function WorkPreviewPage() {
   const images = useMemo(() => work?.images ?? [], [work]);
   const visibleImages = showAll ? images : images.slice(0, 1);
   const activeImage = images[lightboxIndex];
+  const activeDisplay = activeImage ? resolveDisplaySource(activeImage) : null;
   const previewSource = location.state as
     | {
         from?: string;
@@ -290,9 +315,11 @@ export function WorkPreviewPage() {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     return images
       .map((img) => {
-        const isThumbnail = !img.original_path && !!img.thumbnail_path;
-        const rawPath = img.original_path || img.thumbnail_path;
-        const normalized = normalizePublicImagePath(rawPath, isThumbnail);
+        const display = resolveDisplaySource(img);
+        const normalized = normalizePublicImagePath(
+          display.path,
+          display.variant,
+        );
         if (!normalized) {
           return "";
         }
@@ -436,39 +463,42 @@ export function WorkPreviewPage() {
         <div className="space-y-6">
           <div className="space-y-4">
             {visibleImages.length > 0 ? (
-              visibleImages.map((img, index) => (
-                <div
-                  key={img.id}
-                  className="bg-card border border-border rounded-lg overflow-hidden"
-                >
-                  <div className="relative">
-                    <Button
-                      variant="ghost"
-                      className="w-full h-auto p-0"
-                      onClick={() => openLightbox(showAll ? index : 0)}
-                    >
-                      <AuthImage
-                        path={img.original_path || img.thumbnail_path}
-                        alt={work?.title ?? ""}
-                        variant={img.original_path ? "original" : "thumbnail"}
-                        className="w-full max-h-155 object-contain bg-muted"
-                      />
-                    </Button>
-                    {!showAll && images.length > 1 && index === 0 && (
-                      <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => setShowAll(true)}
-                          className="bg-black/60 text-white hover:bg-black/70"
-                        >
-                          查看全部
-                        </Button>
-                      </div>
-                    )}
+              visibleImages.map((img, index) => {
+                const display = resolveDisplaySource(img);
+                return (
+                  <div
+                    key={img.id}
+                    className="bg-card border border-border rounded-lg overflow-hidden"
+                  >
+                    <div className="relative">
+                      <Button
+                        variant="ghost"
+                        className="w-full h-auto p-0"
+                        onClick={() => openLightbox(showAll ? index : 0)}
+                      >
+                        <AuthImage
+                          path={display.path}
+                          alt={work?.title ?? ""}
+                          variant={display.variant}
+                          className="w-full max-h-155 object-contain bg-muted"
+                        />
+                      </Button>
+                      {!showAll && images.length > 1 && index === 0 && (
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => setShowAll(true)}
+                            className="bg-black/60 text-white hover:bg-black/70"
+                          >
+                            查看全部
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="bg-card border border-border rounded-lg p-6 text-center text-muted-foreground">
                 无图片
@@ -861,12 +891,14 @@ export function WorkPreviewPage() {
               }}
               className="max-h-[90vh] max-w-[90vw] will-change-transform"
             >
-              <AuthImage
-                path={activeImage.original_path || activeImage.thumbnail_path}
-                alt={work?.title ?? ""}
-                variant={activeImage.original_path ? "original" : "thumbnail"}
-                className="max-h-[90vh] max-w-[90vw] object-contain pointer-events-none select-none"
-              />
+              {activeDisplay && (
+                <AuthImage
+                  path={activeDisplay.path}
+                  alt={work?.title ?? ""}
+                  variant={activeDisplay.variant}
+                  className="max-h-[90vh] max-w-[90vw] object-contain pointer-events-none select-none"
+                />
+              )}
             </div>
           </div>
         </div>

@@ -5,7 +5,7 @@ type AuthImageProps = {
   path: string;
   alt: string;
   className?: string;
-  variant?: "thumbnail" | "original";
+  variant?: "thumbnail" | "original" | "transcoded";
 };
 
 export function AuthImage({
@@ -25,7 +25,9 @@ export function AuthImage({
         const res =
           variant === "original"
             ? await imageService.fetchOriginal(path)
-            : await imageService.fetchThumbnail(path);
+            : variant === "transcoded"
+              ? await imageService.fetchTranscoded(path)
+              : await imageService.fetchThumbnail(path);
         objectUrl = URL.createObjectURL(res.data);
         if (!revoked) {
           setSrc(objectUrl);

@@ -314,17 +314,18 @@ func (r *WorkRepository) FindAllForExport() ([]model.Work, error) {
 }
 
 func (r *WorkRepository) IsPublicImagePath(path string, isThumbnail bool) (bool, error) {
-	column := "work_images.storage_path"
+	var count int64
+	query := r.DB.Model(&model.WorkImage{}).
+		Joins("JOIN works ON works.id = work_images.work_id").
+		Where("works.is_public = ?", true)
+
 	if isThumbnail {
-		column = "work_images.thumbnail_path"
+		query = query.Where("work_images.thumbnail_path = ?", path)
+	} else {
+		query = query.Where("(work_images.storage_path = ? OR work_images.transcoded_path = ?)", path, path)
 	}
 
-	var count int64
-	err := r.DB.Model(&model.WorkImage{}).
-		Joins("JOIN works ON works.id = work_images.work_id").
-		Where("works.is_public = ?", true).
-		Where(column+" = ?", path).
-		Count(&count).Error
+	err := query.Count(&count).Error
 	if err != nil {
 		return false, err
 	}

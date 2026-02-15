@@ -120,12 +120,13 @@ func (s *WorkService) CreateWork(req *CreateWorkRequest, uploadedImages []*Uploa
 	var images []model.WorkImage
 	for _, uploaded := range uploadedImages {
 		images = append(images, model.WorkImage{
-			StoragePath:   uploaded.StoragePath,
-			ThumbnailPath: uploaded.ThumbnailPath,
-			ImageHash:     normalizeImageHash(uploaded.ImageHash),
-			FileSize:      uploaded.FileSize,
-			Width:         uploaded.Width,
-			Height:        uploaded.Height,
+			StoragePath:    uploaded.StoragePath,
+			TranscodedPath: uploaded.TranscodedPath,
+			ThumbnailPath:  uploaded.ThumbnailPath,
+			ImageHash:      normalizeImageHash(uploaded.ImageHash),
+			FileSize:       uploaded.FileSize,
+			Width:          uploaded.Width,
+			Height:         uploaded.Height,
 		})
 	}
 	work.Images = images
@@ -180,7 +181,7 @@ func (s *WorkService) DeleteWork(id uint) error {
 	}
 
 	for _, img := range work.Images {
-		if err := s.imageService.DeleteImage(img.StoragePath, img.ThumbnailPath); err != nil {
+		if err := s.imageService.DeleteImage(img.StoragePath, img.ThumbnailPath, img.TranscodedPath); err != nil {
 			return err
 		}
 	}
@@ -195,7 +196,7 @@ func (s *WorkService) BatchDeleteWorks(ids []uint) (int64, error) {
 			continue
 		}
 		for _, img := range work.Images {
-			s.imageService.DeleteImage(img.StoragePath, img.ThumbnailPath)
+			s.imageService.DeleteImage(img.StoragePath, img.ThumbnailPath, img.TranscodedPath)
 		}
 	}
 	return s.workRepo.BatchDelete(ids)
@@ -218,12 +219,13 @@ func (s *WorkService) AddImages(workID uint, uploadedImages []*UploadedImage) ([
 	var images []model.WorkImage
 	for _, uploaded := range uploadedImages {
 		images = append(images, model.WorkImage{
-			StoragePath:   uploaded.StoragePath,
-			ThumbnailPath: uploaded.ThumbnailPath,
-			ImageHash:     normalizeImageHash(uploaded.ImageHash),
-			FileSize:      uploaded.FileSize,
-			Width:         uploaded.Width,
-			Height:        uploaded.Height,
+			StoragePath:    uploaded.StoragePath,
+			TranscodedPath: uploaded.TranscodedPath,
+			ThumbnailPath:  uploaded.ThumbnailPath,
+			ImageHash:      normalizeImageHash(uploaded.ImageHash),
+			FileSize:       uploaded.FileSize,
+			Width:          uploaded.Width,
+			Height:         uploaded.Height,
 		})
 	}
 
@@ -234,14 +236,15 @@ func (s *WorkService) AddImages(workID uint, uploadedImages []*UploadedImage) ([
 	var imageInfos []*ImageInfo
 	for i := range images {
 		imageInfos = append(imageInfos, &ImageInfo{
-			ID:            images[i].ID,
-			ThumbnailPath: images[i].ThumbnailPath,
-			OriginalPath:  images[i].StoragePath,
-			ImageHash:     images[i].ImageHash,
-			FileSize:      images[i].FileSize,
-			Width:         images[i].Width,
-			Height:        images[i].Height,
-			SortOrder:     images[i].SortOrder,
+			ID:             images[i].ID,
+			ThumbnailPath:  images[i].ThumbnailPath,
+			OriginalPath:   images[i].StoragePath,
+			TranscodedPath: images[i].TranscodedPath,
+			ImageHash:      images[i].ImageHash,
+			FileSize:       images[i].FileSize,
+			Width:          images[i].Width,
+			Height:         images[i].Height,
+			SortOrder:      images[i].SortOrder,
 		})
 	}
 
@@ -263,7 +266,7 @@ func (s *WorkService) DeleteImage(workID, imageID uint) error {
 		return err
 	}
 
-	if err := s.imageService.DeleteImage(image.StoragePath, image.ThumbnailPath); err != nil {
+	if err := s.imageService.DeleteImage(image.StoragePath, image.ThumbnailPath, image.TranscodedPath); err != nil {
 		return err
 	}
 
@@ -287,14 +290,15 @@ func (s *WorkService) workToInfo(work *model.Work, fullDetails bool) *WorkInfo {
 
 	if len(work.Images) > 0 {
 		info.CoverImage = &ImageInfo{
-			ID:            work.Images[0].ID,
-			ThumbnailPath: work.Images[0].ThumbnailPath,
-			OriginalPath:  work.Images[0].StoragePath,
-			ImageHash:     work.Images[0].ImageHash,
-			FileSize:      work.Images[0].FileSize,
-			Width:         work.Images[0].Width,
-			Height:        work.Images[0].Height,
-			SortOrder:     work.Images[0].SortOrder,
+			ID:             work.Images[0].ID,
+			ThumbnailPath:  work.Images[0].ThumbnailPath,
+			OriginalPath:   work.Images[0].StoragePath,
+			TranscodedPath: work.Images[0].TranscodedPath,
+			ImageHash:      work.Images[0].ImageHash,
+			FileSize:       work.Images[0].FileSize,
+			Width:          work.Images[0].Width,
+			Height:         work.Images[0].Height,
+			SortOrder:      work.Images[0].SortOrder,
 		}
 		info.ImageCount = len(work.Images)
 	}
@@ -303,14 +307,15 @@ func (s *WorkService) workToInfo(work *model.Work, fullDetails bool) *WorkInfo {
 		var images []ImageInfo
 		for _, img := range work.Images {
 			images = append(images, ImageInfo{
-				ID:            img.ID,
-				ThumbnailPath: img.ThumbnailPath,
-				OriginalPath:  img.StoragePath,
-				ImageHash:     img.ImageHash,
-				FileSize:      img.FileSize,
-				Width:         img.Width,
-				Height:        img.Height,
-				SortOrder:     img.SortOrder,
+				ID:             img.ID,
+				ThumbnailPath:  img.ThumbnailPath,
+				OriginalPath:   img.StoragePath,
+				TranscodedPath: img.TranscodedPath,
+				ImageHash:      img.ImageHash,
+				FileSize:       img.FileSize,
+				Width:          img.Width,
+				Height:         img.Height,
+				SortOrder:      img.SortOrder,
 			})
 		}
 		info.Images = images

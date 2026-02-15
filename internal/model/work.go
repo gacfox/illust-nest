@@ -18,16 +18,17 @@ type Work struct {
 }
 
 type WorkImage struct {
-	ID            uint      `gorm:"primaryKey" json:"id"`
-	WorkID        uint      `gorm:"not null;index" json:"work_id"`
-	StoragePath   string    `gorm:"type:varchar(255);not null" json:"storage_path"`
-	ThumbnailPath string    `gorm:"type:varchar(255);not null" json:"thumbnail_path"`
-	ImageHash     string    `gorm:"type:varchar(64);not null;default:'';index:idx_work_images_image_hash" json:"image_hash,omitempty"`
-	FileSize      int64     `gorm:"not null" json:"file_size"`
-	Width         int       `gorm:"not null" json:"width"`
-	Height        int       `gorm:"not null" json:"height"`
-	SortOrder     int       `gorm:"default:0;not null" json:"sort_order"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID             uint      `gorm:"primaryKey" json:"id"`
+	WorkID         uint      `gorm:"not null;index" json:"work_id"`
+	StoragePath    string    `gorm:"type:varchar(255);not null" json:"storage_path"`
+	TranscodedPath string    `gorm:"type:varchar(255);default:''" json:"transcoded_path,omitempty"`
+	ThumbnailPath  string    `gorm:"type:varchar(255);not null" json:"thumbnail_path"`
+	ImageHash      string    `gorm:"type:varchar(64);not null;default:'';index:idx_work_images_image_hash" json:"image_hash,omitempty"`
+	FileSize       int64     `gorm:"not null" json:"file_size"`
+	Width          int       `gorm:"not null" json:"width"`
+	Height         int       `gorm:"not null" json:"height"`
+	SortOrder      int       `gorm:"default:0;not null" json:"sort_order"`
+	CreatedAt      time.Time `json:"created_at"`
 }
 
 type WorkTag struct {

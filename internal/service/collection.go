@@ -277,13 +277,14 @@ func workToInfo(work *model.Work, fullDetails bool) *WorkInfo {
 
 	if len(work.Images) > 0 {
 		info.CoverImage = &ImageInfo{
-			ID:            work.Images[0].ID,
-			ThumbnailPath: work.Images[0].ThumbnailPath,
-			OriginalPath:  work.Images[0].StoragePath,
-			FileSize:      work.Images[0].FileSize,
-			Width:         work.Images[0].Width,
-			Height:        work.Images[0].Height,
-			SortOrder:     work.Images[0].SortOrder,
+			ID:             work.Images[0].ID,
+			ThumbnailPath:  work.Images[0].ThumbnailPath,
+			OriginalPath:   work.Images[0].StoragePath,
+			TranscodedPath: work.Images[0].TranscodedPath,
+			FileSize:       work.Images[0].FileSize,
+			Width:          work.Images[0].Width,
+			Height:         work.Images[0].Height,
+			SortOrder:      work.Images[0].SortOrder,
 		}
 		info.ImageCount = len(work.Images)
 	}
@@ -292,13 +293,14 @@ func workToInfo(work *model.Work, fullDetails bool) *WorkInfo {
 		var images []ImageInfo
 		for _, img := range work.Images {
 			images = append(images, ImageInfo{
-				ID:            img.ID,
-				ThumbnailPath: img.ThumbnailPath,
-				OriginalPath:  img.StoragePath,
-				FileSize:      img.FileSize,
-				Width:         img.Width,
-				Height:        img.Height,
-				SortOrder:     img.SortOrder,
+				ID:             img.ID,
+				ThumbnailPath:  img.ThumbnailPath,
+				OriginalPath:   img.StoragePath,
+				TranscodedPath: img.TranscodedPath,
+				FileSize:       img.FileSize,
+				Width:          img.Width,
+				Height:         img.Height,
+				SortOrder:      img.SortOrder,
 			})
 		}
 		info.Images = images

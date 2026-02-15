@@ -17,6 +17,8 @@ import (
 	"time"
 
 	"github.com/disintegration/imaging"
+	_ "golang.org/x/image/bmp"
+	_ "golang.org/x/image/tiff"
 	_ "golang.org/x/image/webp"
 )
 
@@ -28,10 +30,13 @@ const (
 )
 
 var allowedUploadFormats = map[string]struct{}{
-	"image/jpeg": {},
-	"image/png":  {},
-	"image/gif":  {},
-	"image/webp": {},
+	"image/jpeg":     {},
+	"image/png":      {},
+	"image/gif":      {},
+	"image/webp":     {},
+	"image/bmp":      {},
+	"image/x-ms-bmp": {},
+	"image/tiff":     {},
 }
 
 const logicalUploadPrefix = "uploads/"
@@ -63,7 +68,7 @@ func (s *ImageService) processImage(file *multipart.FileHeader) (*UploadedImage,
 	}
 	defer src.Close()
 
-	img, _, err := image.Decode(src)
+	img, format, err := image.Decode(src)
 	if err != nil {
 		return nil, err
 	}
@@ -75,6 +80,11 @@ func (s *ImageService) processImage(file *multipart.FileHeader) (*UploadedImage,
 	ext := filepath.Ext(file.Filename)
 	originalPath, originalLogicalPath := s.getStoragePath("originals", uuid, ext)
 	thumbnailPath, thumbnailLogicalPath := s.getStoragePath("thumbnails", uuid, ".jpg")
+	transcodedPath := ""
+	transcodedLogicalPath := ""
+	if shouldTranscodeOriginal(format, ext, file.Header.Get("Content-Type")) {
+		transcodedPath, transcodedLogicalPath = s.getStoragePath("transcoded", uuid+"-transcoded", ".jpg")
+	}
 
 	originalDir := filepath.Dir(originalPath)
 	if err := os.MkdirAll(originalDir, 0755); err != nil {
@@ -84,6 +94,12 @@ func (s *ImageService) processImage(file *multipart.FileHeader) (*UploadedImage,
 	thumbnailDir := filepath.Dir(thumbnailPath)
 	if err := os.MkdirAll(thumbnailDir, 0755); err != nil {
 		return nil, err
+	}
+	if transcodedPath != "" {
+		transcodedDir := filepath.Dir(transcodedPath)
+		if err := os.MkdirAll(transcodedDir, 0755); err != nil {
+			return nil, err
+		}
 	}
 
 	src.Seek(0, 0)
@@ -101,10 +117,16 @@ func (s *ImageService) processImage(file *multipart.FileHeader) (*UploadedImage,
 	if err := imaging.Save(thumbnailImg, thumbnailPath, imaging.JPEGQuality(thumbnailQuality)); err != nil {
 		return nil, err
 	}
+	if transcodedPath != "" {
+		if err := imaging.Save(img, transcodedPath, imaging.JPEGQuality(90)); err != nil {
+			return nil, err
+		}
+	}
 
 	return &UploadedImage{
 		StoragePath:      originalLogicalPath,
 		ThumbnailPath:    thumbnailLogicalPath,
+		TranscodedPath:   transcodedLogicalPath,
 		FileSize:         file.Size,
 		Width:            width,
 		Height:           height,
@@ -121,7 +143,7 @@ func (s *ImageService) getStoragePath(subDir, uuid, ext string) (string, string)
 	return physicalPath, logicalPath
 }
 
-func (s *ImageService) DeleteImage(storagePath, thumbnailPath string) error {
+func (s *ImageService) DeleteImage(storagePath, thumbnailPath, transcodedPath string) error {
 	originalFullPath, err := ResolveUploadPath(storagePath)
 	if err != nil {
 		return err
@@ -138,8 +160,33 @@ func (s *ImageService) DeleteImage(storagePath, thumbnailPath string) error {
 	if err := os.Remove(thumbnailFullPath); err != nil && !os.IsNotExist(err) {
 		return err
 	}
+	if strings.TrimSpace(transcodedPath) != "" {
+		transcodedFullPath, err := ResolveUploadPath(transcodedPath)
+		if err != nil {
+			return err
+		}
+		if err := os.Remove(transcodedFullPath); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
 
 	return nil
+}
+
+func shouldTranscodeOriginal(format, ext, contentType string) bool {
+	cleanFormat := strings.ToLower(strings.TrimSpace(format))
+	if cleanFormat == "bmp" || cleanFormat == "tiff" {
+		return true
+	}
+
+	cleanExt := strings.ToLower(strings.TrimSpace(ext))
+	switch cleanExt {
+	case ".bmp", ".dib", ".tif", ".tiff":
+		return true
+	}
+
+	cleanType := strings.ToLower(strings.TrimSpace(contentType))
+	return cleanType == "image/bmp" || cleanType == "image/x-ms-bmp" || cleanType == "image/tiff"
 }
 
 func generateUUID() string {

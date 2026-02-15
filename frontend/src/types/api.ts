@@ -96,6 +96,7 @@ export interface Image {
   id: number;
   thumbnail_path: string;
   original_path?: string;
+  transcoded_path?: string;
   image_hash?: string;
   file_size?: number;
   width: number;
@@ -211,6 +212,7 @@ export interface WorksResult {
 export interface UploadedImage {
   storage_path: string;
   thumbnail_path: string;
+  transcoded_path?: string;
   image_hash?: string;
   file_size: number;
   width: number;

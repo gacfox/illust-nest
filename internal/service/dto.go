@@ -131,14 +131,15 @@ type WorkInfo struct {
 }
 
 type ImageInfo struct {
-	ID            uint   `json:"id"`
-	ThumbnailPath string `json:"thumbnail_path"`
-	OriginalPath  string `json:"original_path,omitempty"`
-	ImageHash     string `json:"image_hash,omitempty"`
-	FileSize      int64  `json:"file_size,omitempty"`
-	Width         int    `json:"width"`
-	Height        int    `json:"height"`
-	SortOrder     int    `json:"sort_order"`
+	ID             uint   `json:"id"`
+	ThumbnailPath  string `json:"thumbnail_path"`
+	OriginalPath   string `json:"original_path,omitempty"`
+	TranscodedPath string `json:"transcoded_path,omitempty"`
+	ImageHash      string `json:"image_hash,omitempty"`
+	FileSize       int64  `json:"file_size,omitempty"`
+	Width          int    `json:"width"`
+	Height         int    `json:"height"`
+	SortOrder      int    `json:"sort_order"`
 }
 
 type CreateCollectionRequest struct {
@@ -190,6 +191,7 @@ type WorksResult struct {
 type UploadedImage struct {
 	StoragePath      string `json:"storage_path"`
 	ThumbnailPath    string `json:"thumbnail_path"`
+	TranscodedPath   string `json:"transcoded_path,omitempty"`
 	ImageHash        string `json:"image_hash,omitempty"`
 	FileSize         int64  `json:"file_size"`
 	Width            int    `json:"width"`

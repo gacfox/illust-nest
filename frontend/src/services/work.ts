@@ -68,25 +68,34 @@ export const workService = {
 
 export const imageService = {
   getOriginal: (path: string) => {
-    const normalized = normalizeImagePath(path, "uploads/originals/");
+    const normalized = normalizeImagePath(path, ["uploads/originals/"]);
     return `/api/images/originals${normalized}`;
   },
 
   getThumbnail: (path: string) => {
-    const normalized = normalizeImagePath(path, "uploads/thumbnails/");
+    const normalized = normalizeImagePath(path, ["uploads/thumbnails/"]);
     return `/api/images/thumbnails${normalized}`;
+  },
+  getTranscoded: (path: string) => {
+    const normalized = normalizeImagePath(path, ["uploads/transcoded/"]);
+    return `/api/images/transcoded${normalized}`;
   },
   fetchOriginal: (path: string) =>
     api.get(imageService.getOriginal(path), { responseType: "blob" }),
+  fetchTranscoded: (path: string) =>
+    api.get(imageService.getTranscoded(path), { responseType: "blob" }),
   fetchThumbnail: (path: string) =>
     api.get(imageService.getThumbnail(path), { responseType: "blob" }),
 };
 
-function normalizeImagePath(path: string, prefix: string) {
+function normalizeImagePath(path: string, prefixes: string[]) {
   if (!path) return "";
   let cleaned = path.startsWith("/") ? path.slice(1) : path;
-  if (cleaned.startsWith(prefix)) {
-    cleaned = cleaned.slice(prefix.length);
+  for (const prefix of prefixes) {
+    if (cleaned.startsWith(prefix)) {
+      cleaned = cleaned.slice(prefix.length);
+      break;
+    }
   }
   return `/${cleaned}`;
 }
