@@ -76,6 +76,7 @@ export interface Image {
   id: number;
   thumbnail_path: string;
   original_path?: string;
+  image_hash?: string;
   file_size?: number;
   width: number;
   height: number;
@@ -190,6 +191,7 @@ export interface WorksResult {
 export interface UploadedImage {
   storage_path: string;
   thumbnail_path: string;
+  image_hash?: string;
   file_size: number;
   width: number;
   height: number;
@@ -198,4 +200,19 @@ export interface UploadedImage {
 
 export interface ImageUploadResponse {
   images: UploadedImage[];
+}
+
+export interface DuplicateImageInfo {
+  image_hash: string;
+  work_id: number;
+  image_id: number;
+}
+
+export interface CheckDuplicateImagesRequest {
+  image_hashes: string[];
+  exclude_work_id?: number;
+}
+
+export interface CheckDuplicateImagesResponse {
+  duplicates: DuplicateImageInfo[];
 }

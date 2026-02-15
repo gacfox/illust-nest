@@ -170,6 +170,13 @@ func (h *WorkHandler) Create(c *gin.Context) {
 		return
 	}
 
+	imageHashes := parseImageHashes(form.Value["image_hashes"])
+	for i := range uploadedImages {
+		if i < len(imageHashes) {
+			uploadedImages[i].ImageHash = imageHashes[i]
+		}
+	}
+
 	work, err := h.workService.CreateWork(req, uploadedImages)
 	if err != nil {
 		InternalErrorWithMessage(c, err.Error())
@@ -276,6 +283,13 @@ func (h *WorkHandler) AddImages(c *gin.Context) {
 		return
 	}
 
+	imageHashes := parseImageHashes(form.Value["image_hashes"])
+	for i := range uploadedImages {
+		if i < len(imageHashes) {
+			uploadedImages[i].ImageHash = imageHashes[i]
+		}
+	}
+
 	images, err := h.workService.AddImages(uint(id), uploadedImages)
 	if err != nil {
 		InternalErrorWithMessage(c, err.Error())
@@ -336,6 +350,24 @@ func (h *WorkHandler) UpdateImageOrder(c *gin.Context) {
 	}
 
 	Success(c, nil)
+}
+
+func (h *WorkHandler) CheckDuplicateImages(c *gin.Context) {
+	var req service.DuplicateImageCheckRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	duplicates, err := h.workService.CheckDuplicateImages(req.ImageHashes, req.ExcludeWorkID)
+	if err != nil {
+		InternalErrorWithMessage(c, err.Error())
+		return
+	}
+
+	Success(c, service.DuplicateImageCheckResponse{
+		Duplicates: duplicates,
+	})
 }
 
 type BatchUpdatePublicRequest struct {
@@ -461,4 +493,18 @@ func (h *WorkHandler) ExportImages(c *gin.Context) {
 		return
 	}
 	_, _ = indexEntry.Write(indexBuffer.Bytes())
+}
+
+func parseImageHashes(values []string) []string {
+	hashes := make([]string, 0, len(values))
+	for _, raw := range values {
+		for _, part := range strings.Split(raw, ",") {
+			hash := strings.TrimSpace(part)
+			if hash == "" {
+				continue
+			}
+			hashes = append(hashes, hash)
+		}
+	}
+	return hashes
 }

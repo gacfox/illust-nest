@@ -146,34 +146,52 @@ const AlertDialogAction = React.forwardRef<
   HTMLButtonElement,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Action> &
     Pick<React.ComponentProps<typeof Button>, "variant" | "size">
->(({ className, variant = "default", size = "default", ...props }, ref) => {
-  return (
-    <Button ref={ref} variant={variant} size={size}>
-      <AlertDialogPrimitive.Action
-        data-slot="alert-dialog-action"
-        className={cn(className)}
-        {...props}
-      />
-    </Button>
-  );
-});
+>(
+  (
+    { className, variant = "default", size = "default", children, ...props },
+    ref,
+  ) => {
+    return (
+      <AlertDialogPrimitive.Action asChild {...props}>
+        <Button
+          ref={ref}
+          variant={variant}
+          size={size}
+          data-slot="alert-dialog-action"
+          className={cn(className)}
+        >
+          {children}
+        </Button>
+      </AlertDialogPrimitive.Action>
+    );
+  },
+);
 AlertDialogAction.displayName = "AlertDialogAction";
 
 const AlertDialogCancel = React.forwardRef<
   HTMLButtonElement,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Cancel> &
     Pick<React.ComponentProps<typeof Button>, "variant" | "size">
->(({ className, variant = "outline", size = "default", ...props }, ref) => {
-  return (
-    <Button ref={ref} variant={variant} size={size}>
-      <AlertDialogPrimitive.Cancel
-        data-slot="alert-dialog-cancel"
-        className={cn(className)}
-        {...props}
-      />
-    </Button>
-  );
-});
+>(
+  (
+    { className, variant = "outline", size = "default", children, ...props },
+    ref,
+  ) => {
+    return (
+      <AlertDialogPrimitive.Cancel asChild {...props}>
+        <Button
+          ref={ref}
+          variant={variant}
+          size={size}
+          data-slot="alert-dialog-cancel"
+          className={cn(className)}
+        >
+          {children}
+        </Button>
+      </AlertDialogPrimitive.Cancel>
+    );
+  },
+);
 AlertDialogCancel.displayName = "AlertDialogCancel";
 
 export {

@@ -307,3 +307,24 @@ func (r *WorkRepository) IsPublicImagePath(path string, isThumbnail bool) (bool,
 	}
 	return count > 0, nil
 }
+
+func (r *WorkRepository) FindDuplicateImagesByHashes(hashes []string, excludeWorkID *uint) ([]model.WorkImage, error) {
+	if len(hashes) == 0 {
+		return []model.WorkImage{}, nil
+	}
+
+	var images []model.WorkImage
+	query := r.DB.Model(&model.WorkImage{}).
+		Select("id", "work_id", "image_hash").
+		Where("image_hash IN ?", hashes)
+
+	if excludeWorkID != nil {
+		query = query.Where("work_id <> ?", *excludeWorkID)
+	}
+
+	if err := query.Order("id ASC").Find(&images).Error; err != nil {
+		return nil, err
+	}
+
+	return images, nil
+}

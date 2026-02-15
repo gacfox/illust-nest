@@ -122,6 +122,7 @@ func (s *WorkService) CreateWork(req *CreateWorkRequest, uploadedImages []*Uploa
 		images = append(images, model.WorkImage{
 			StoragePath:   uploaded.StoragePath,
 			ThumbnailPath: uploaded.ThumbnailPath,
+			ImageHash:     normalizeImageHash(uploaded.ImageHash),
 			FileSize:      uploaded.FileSize,
 			Width:         uploaded.Width,
 			Height:        uploaded.Height,
@@ -219,6 +220,7 @@ func (s *WorkService) AddImages(workID uint, uploadedImages []*UploadedImage) ([
 		images = append(images, model.WorkImage{
 			StoragePath:   uploaded.StoragePath,
 			ThumbnailPath: uploaded.ThumbnailPath,
+			ImageHash:     normalizeImageHash(uploaded.ImageHash),
 			FileSize:      uploaded.FileSize,
 			Width:         uploaded.Width,
 			Height:        uploaded.Height,
@@ -235,6 +237,7 @@ func (s *WorkService) AddImages(workID uint, uploadedImages []*UploadedImage) ([
 			ID:            images[i].ID,
 			ThumbnailPath: images[i].ThumbnailPath,
 			OriginalPath:  images[i].StoragePath,
+			ImageHash:     images[i].ImageHash,
 			FileSize:      images[i].FileSize,
 			Width:         images[i].Width,
 			Height:        images[i].Height,
@@ -287,6 +290,7 @@ func (s *WorkService) workToInfo(work *model.Work, fullDetails bool) *WorkInfo {
 			ID:            work.Images[0].ID,
 			ThumbnailPath: work.Images[0].ThumbnailPath,
 			OriginalPath:  work.Images[0].StoragePath,
+			ImageHash:     work.Images[0].ImageHash,
 			FileSize:      work.Images[0].FileSize,
 			Width:         work.Images[0].Width,
 			Height:        work.Images[0].Height,
@@ -302,6 +306,7 @@ func (s *WorkService) workToInfo(work *model.Work, fullDetails bool) *WorkInfo {
 				ID:            img.ID,
 				ThumbnailPath: img.ThumbnailPath,
 				OriginalPath:  img.StoragePath,
+				ImageHash:     img.ImageHash,
 				FileSize:      img.FileSize,
 				Width:         img.Width,
 				Height:        img.Height,
@@ -389,4 +394,61 @@ func splitString(s, sep string) []string {
 	}
 	parts = append(parts, s[start:])
 	return parts
+}
+
+func normalizeImageHash(hash string) string {
+	return strings.ToLower(strings.TrimSpace(hash))
+}
+
+func normalizeImageHashes(hashes []string) []string {
+	normalized := make([]string, 0, len(hashes))
+	seen := make(map[string]struct{})
+	for _, hash := range hashes {
+		cleaned := normalizeImageHash(hash)
+		if cleaned == "" {
+			continue
+		}
+		if _, exists := seen[cleaned]; exists {
+			continue
+		}
+		seen[cleaned] = struct{}{}
+		normalized = append(normalized, cleaned)
+	}
+	return normalized
+}
+
+func (s *WorkService) CheckDuplicateImages(hashes []string, excludeWorkID *uint) ([]DuplicateImageInfo, error) {
+	normalized := normalizeImageHashes(hashes)
+	if len(normalized) == 0 {
+		return []DuplicateImageInfo{}, nil
+	}
+
+	images, err := s.workRepo.FindDuplicateImagesByHashes(normalized, excludeWorkID)
+	if err != nil {
+		return nil, err
+	}
+
+	byHash := make(map[string]DuplicateImageInfo)
+	for _, img := range images {
+		cleaned := normalizeImageHash(img.ImageHash)
+		if cleaned == "" {
+			continue
+		}
+		if _, exists := byHash[cleaned]; exists {
+			continue
+		}
+		byHash[cleaned] = DuplicateImageInfo{
+			ImageHash: cleaned,
+			WorkID:    img.WorkID,
+			ImageID:   img.ID,
+		}
+	}
+
+	duplicates := make([]DuplicateImageInfo, 0)
+	for _, hash := range normalized {
+		if item, ok := byHash[hash]; ok {
+			duplicates = append(duplicates, item)
+		}
+	}
+	return duplicates, nil
 }

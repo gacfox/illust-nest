@@ -8,13 +8,23 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { tagService, workService } from "@/services";
-import type { Image, Tag, Work } from "@/types/api";
+import type { DuplicateImageInfo, Image, Tag, Work } from "@/types/api";
 import { useAuthStore } from "@/stores";
 import { AuthImage } from "@/components/AuthImage";
 
@@ -26,6 +36,7 @@ type WorkDetail = Work & {
 type UploadItem = {
   file: File;
   previewUrl: string;
+  imageHash: string;
 };
 
 export function WorkEditPage() {
@@ -48,6 +59,10 @@ export function WorkEditPage() {
   const [newUploads, setNewUploads] = useState<UploadItem[]>([]);
   const [imageOrder, setImageOrder] = useState<number[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateImages, setDuplicateImages] = useState<DuplicateImageInfo[]>(
+    [],
+  );
   const editSource = location.state as
     | {
         from?: string;
@@ -126,7 +141,7 @@ export function WorkEditPage() {
         toast.error("请拖拽图片文件");
         return;
       }
-      handleFiles(imageFiles as any);
+      handleFiles(imageFiles);
     }
   };
 
@@ -136,18 +151,21 @@ export function WorkEditPage() {
     navigate("/login");
   };
 
-  const handleFiles = (files: FileList | null) => {
-    if (!files) return;
-    const list = Array.from(files);
-    const next = list.map((file) => ({
-      file,
-      previewUrl: URL.createObjectURL(file),
-    }));
-    setNewUploads((prev) => [...prev, ...next]);
+  const handleFiles = (files: FileList | File[] | null) => {
+    if (!files) {
+      return;
+    }
+    void appendUploadsWithHash(Array.from(files));
   };
 
   const removeNewUpload = (index: number) => {
-    setNewUploads((prev) => prev.filter((_, i) => i !== index));
+    setNewUploads((prev) => {
+      const target = prev[index];
+      if (target) {
+        URL.revokeObjectURL(target.previewUrl);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const moveNewUpload = (from: number, to: number) => {
@@ -189,8 +207,19 @@ export function WorkEditPage() {
 
   const handleSave = async () => {
     if (!canSave) return;
-    setSaving(true);
     setError("");
+
+    const passedDuplicateCheck = await confirmDuplicateImages();
+    if (!passedDuplicateCheck) {
+      return;
+    }
+
+    await executeSave();
+  };
+
+  const executeSave = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       if (isNew) {
         const formData = new FormData();
@@ -201,7 +230,10 @@ export function WorkEditPage() {
         if (selectedTagIds.length > 0) {
           formData.append("tag_ids", selectedTagIds.join(","));
         }
-        newUploads.forEach((item) => formData.append("images", item.file));
+        newUploads.forEach((item) => {
+          formData.append("images", item.file);
+          formData.append("image_hashes", item.imageHash);
+        });
         const createRes = await workService.create(formData);
         if (createRes.data.code !== 0) {
           toast.error(createRes.data.message || "创建作品失败");
@@ -209,7 +241,7 @@ export function WorkEditPage() {
         }
         const createdId = createRes.data.data?.id;
         if (createdId) {
-          setNewUploads([]);
+          clearNewUploads();
           toast.success("作品创建成功");
           navigate(`/works/${createdId}`);
         } else {
@@ -235,7 +267,10 @@ export function WorkEditPage() {
 
         if (newUploads.length > 0) {
           const formData = new FormData();
-          newUploads.forEach((item) => formData.append("images", item.file));
+          newUploads.forEach((item) => {
+            formData.append("images", item.file);
+            formData.append("image_hashes", item.imageHash);
+          });
           const uploadRes = await workService.addImages(workId, formData);
           if (uploadRes.data.code !== 0) {
             toast.error(uploadRes.data.message || "上传图片失败");
@@ -247,7 +282,7 @@ export function WorkEditPage() {
           description: "您的修改已成功保存",
         });
 
-        setNewUploads([]);
+        clearNewUploads();
         await loadData();
       }
     } catch (err) {
@@ -258,6 +293,73 @@ export function WorkEditPage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const appendUploadsWithHash = async (files: File[]) => {
+    try {
+      const next = await Promise.all(
+        files.map(async (file) => {
+          const imageHash = await computeImageHash(file);
+          return {
+            file,
+            previewUrl: URL.createObjectURL(file),
+            imageHash,
+          };
+        }),
+      );
+      setNewUploads((prev) => [...prev, ...next]);
+    } catch (err) {
+      console.error("计算图片哈希失败", err);
+      toast.error("计算图片哈希失败，请重试");
+    }
+  };
+
+  const confirmDuplicateImages = async (): Promise<boolean> => {
+    if (newUploads.length === 0) {
+      return true;
+    }
+
+    const imageHashes = Array.from(
+      new Set(newUploads.map((item) => item.imageHash).filter(Boolean)),
+    );
+    if (imageHashes.length === 0) {
+      return true;
+    }
+
+    try {
+      const duplicateRes = await workService.checkDuplicateImages({
+        image_hashes: imageHashes,
+      });
+
+      if (duplicateRes.data.code !== 0) {
+        toast.error(duplicateRes.data.message || "重复图片检查失败");
+        return false;
+      }
+
+      const duplicates = duplicateRes.data.data?.duplicates ?? [];
+      if (duplicates.length === 0) {
+        return true;
+      }
+
+      setDuplicateImages(duplicates);
+      setDuplicateDialogOpen(true);
+      return false;
+    } catch (err) {
+      console.error("重复图片检查失败", err);
+      toast.error("重复图片检查失败");
+      return false;
+    }
+  };
+
+  const uniqueDuplicateWorkIDs = useMemo(() => {
+    return Array.from(new Set(duplicateImages.map((item) => item.work_id)));
+  }, [duplicateImages]);
+
+  const clearNewUploads = () => {
+    setNewUploads((prev) => {
+      prev.forEach((item) => URL.revokeObjectURL(item.previewUrl));
+      return [];
+    });
   };
 
   const handleDeleteImage = async (imageId: number) => {
@@ -619,6 +721,51 @@ export function WorkEditPage() {
           </div>
         </div>
       </div>
+
+      <AlertDialog
+        open={duplicateDialogOpen}
+        onOpenChange={setDuplicateDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>检测到重复图片</AlertDialogTitle>
+            <AlertDialogDescription>
+              新增图片中有 {duplicateImages.length} 张与已存在图片哈希一致。
+              {uniqueDuplicateWorkIDs.length > 0
+                ? `重复图片所在作品 ID：${uniqueDuplicateWorkIDs.join(", ")}`
+                : ""}
+              。您仍可继续保存。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>返回检查</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setDuplicateDialogOpen(false);
+                setDuplicateImages([]);
+                void executeSave();
+              }}
+            >
+              继续保存
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AdminLayout>
   );
+}
+
+async function performDigest(buffer: ArrayBuffer): Promise<string> {
+  const digest = await window.crypto.subtle.digest("SHA-256", buffer);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function computeImageHash(file: File): Promise<string> {
+  if (!window.crypto?.subtle) {
+    throw new Error("Web Crypto API is not available");
+  }
+  const buffer = await file.arrayBuffer();
+  return performDigest(buffer);
 }

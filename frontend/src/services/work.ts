@@ -6,6 +6,8 @@ import type {
   WorkListParams,
   WorkPagedResult,
   ImageUploadResponse,
+  CheckDuplicateImagesRequest,
+  CheckDuplicateImagesResponse,
 } from "@/types/api";
 
 export const workService = {
@@ -56,6 +58,12 @@ export const workService = {
     api.get("/api/works/export/images", {
       responseType: "blob",
     }),
+
+  checkDuplicateImages: (data: CheckDuplicateImagesRequest) =>
+    api.post<ApiResponse<CheckDuplicateImagesResponse>>(
+      "/api/works/images/duplicates",
+      data,
+    ),
 };
 
 export const imageService = {

@@ -114,6 +114,7 @@ type ImageInfo struct {
 	ID            uint   `json:"id"`
 	ThumbnailPath string `json:"thumbnail_path"`
 	OriginalPath  string `json:"original_path,omitempty"`
+	ImageHash     string `json:"image_hash,omitempty"`
 	FileSize      int64  `json:"file_size,omitempty"`
 	Width         int    `json:"width"`
 	Height        int    `json:"height"`
@@ -169,6 +170,7 @@ type WorksResult struct {
 type UploadedImage struct {
 	StoragePath      string `json:"storage_path"`
 	ThumbnailPath    string `json:"thumbnail_path"`
+	ImageHash        string `json:"image_hash,omitempty"`
 	FileSize         int64  `json:"file_size"`
 	Width            int    `json:"width"`
 	Height           int    `json:"height"`
@@ -186,4 +188,19 @@ type ExportImageRecord struct {
 	Tags        string `json:"tags"`
 	Rating      int    `json:"rating"`
 	CreatedAt   string `json:"created_at"`
+}
+
+type DuplicateImageCheckRequest struct {
+	ImageHashes   []string `json:"image_hashes" binding:"required,min=1"`
+	ExcludeWorkID *uint    `json:"exclude_work_id,omitempty"`
+}
+
+type DuplicateImageInfo struct {
+	ImageHash string `json:"image_hash"`
+	WorkID    uint   `json:"work_id"`
+	ImageID   uint   `json:"image_id"`
+}
+
+type DuplicateImageCheckResponse struct {
+	Duplicates []DuplicateImageInfo `json:"duplicates"`
 }
