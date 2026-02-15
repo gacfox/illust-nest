@@ -233,6 +233,132 @@ func (h *WorkHandler) Delete(c *gin.Context) {
 	Success(c, nil)
 }
 
+func (h *WorkHandler) DownloadImages(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		BadRequest(c, "invalid work id")
+		return
+	}
+	workID := uint(id)
+
+	work, err := h.workService.GetWorkByID(workID)
+	if err != nil {
+		NotFound(c)
+		return
+	}
+	if len(work.Images) == 0 {
+		BadRequest(c, "work has no images")
+		return
+	}
+
+	imageIDParam := strings.TrimSpace(c.Query("image_id"))
+	if imageIDParam == "" {
+		h.downloadAllOriginalsAsZip(c, work)
+		return
+	}
+
+	imageID, parseErr := strconv.ParseUint(imageIDParam, 10, 32)
+	if parseErr != nil {
+		BadRequest(c, "invalid image id")
+		return
+	}
+
+	var target *service.ImageInfo
+	for i := range work.Images {
+		if work.Images[i].ID == uint(imageID) {
+			target = &work.Images[i]
+			break
+		}
+	}
+	if target == nil || strings.TrimSpace(target.OriginalPath) == "" {
+		NotFound(c)
+		return
+	}
+
+	fullPathAbs, resolveErr := service.ResolveUploadPath(target.OriginalPath)
+	if resolveErr != nil {
+		NotFound(c)
+		return
+	}
+
+	if stat, statErr := os.Stat(fullPathAbs); statErr != nil || stat.IsDir() {
+		NotFound(c)
+		return
+	}
+
+	ext := filepath.Ext(target.OriginalPath)
+	if ext == "" {
+		ext = ".bin"
+	}
+	filename := sanitizeFilename(work.Title)
+	if filename == "" {
+		filename = "work-" + strconv.FormatUint(uint64(workID), 10)
+	}
+	filename = filename + "-P" + strconv.FormatUint(uint64(target.SortOrder+1), 10) + ext
+	c.FileAttachment(fullPathAbs, filename)
+}
+
+func (h *WorkHandler) downloadAllOriginalsAsZip(c *gin.Context, work *service.WorkInfo) {
+	filename := sanitizeFilename(work.Title)
+	if filename == "" {
+		filename = "work-" + strconv.FormatUint(uint64(work.ID), 10)
+	}
+	filename += "-originals.zip"
+
+	c.Header("Content-Type", "application/zip")
+	c.Header("Content-Disposition", `attachment; filename="`+filename+`"`)
+	c.Status(200)
+
+	zipWriter := zip.NewWriter(c.Writer)
+	defer zipWriter.Close()
+
+	for i := range work.Images {
+		image := work.Images[i]
+		if strings.TrimSpace(image.OriginalPath) == "" {
+			continue
+		}
+
+		fullPathAbs, err := service.ResolveUploadPath(image.OriginalPath)
+		if err != nil {
+			continue
+		}
+		file, err := os.Open(fullPathAbs)
+		if err != nil {
+			continue
+		}
+
+		ext := filepath.Ext(image.OriginalPath)
+		if ext == "" {
+			ext = ".bin"
+		}
+		entryName := "P" + strconv.FormatUint(uint64(image.SortOrder+1), 10) + ext
+		entryWriter, err := zipWriter.Create(entryName)
+		if err != nil {
+			file.Close()
+			continue
+		}
+
+		_, copyErr := io.Copy(entryWriter, file)
+		file.Close()
+		if copyErr != nil {
+			continue
+		}
+	}
+}
+
+func sanitizeFilename(input string) string {
+	name := strings.TrimSpace(input)
+	if name == "" {
+		return ""
+	}
+	invalid := []string{`\\`, "/", ":", "*", "?", `"`, "<", ">", "|"}
+	for _, token := range invalid {
+		name = strings.ReplaceAll(name, token, "_")
+	}
+	return name
+}
+
 type BatchDeleteRequest struct {
 	IDs []uint `json:"ids" binding:"required,min=1"`
 }

@@ -59,6 +59,12 @@ export const workService = {
       responseType: "blob",
     }),
 
+  downloadImages: (id: number, imageId?: number) =>
+    api.get<Blob>(`/api/works/${id}/download`, {
+      params: typeof imageId === "number" ? { image_id: imageId } : undefined,
+      responseType: "blob",
+    }),
+
   checkDuplicateImages: (data: CheckDuplicateImagesRequest) =>
     api.post<ApiResponse<CheckDuplicateImagesResponse>>(
       "/api/works/images/duplicates",

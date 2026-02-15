@@ -20,6 +20,7 @@ import {
   Trash2,
   Link2,
   Copy,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type WorkDetail = Work & {
   images?: Image[];
@@ -121,6 +128,7 @@ export function WorkPreviewPage() {
   const [collectionError, setCollectionError] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const lightboxStageRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -344,6 +352,50 @@ export function WorkPreviewPage() {
       textarea.select();
       document.execCommand("copy");
       document.body.removeChild(textarea);
+    }
+  };
+
+  const parseDownloadFilename = (contentDisposition?: string) => {
+    if (!contentDisposition) return "";
+    const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match?.[1]) {
+      return decodeURIComponent(utf8Match[1]).replace(/"/g, "");
+    }
+    const plainMatch = contentDisposition.match(/filename="?([^";]+)"?/i);
+    return plainMatch?.[1] ?? "";
+  };
+
+  const saveBlob = (blob: Blob, filename: string) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = objectUrl;
+    link.download = filename || "download.bin";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(objectUrl);
+  };
+
+  const handleDownload = async (imageId?: number, label?: string) => {
+    if (!workId || downloading) return;
+    setDownloading(true);
+    try {
+      const res = await workService.downloadImages(workId, imageId);
+      const disposition = (res.headers as Record<string, string | undefined>)[
+        "content-disposition"
+      ];
+      const filename =
+        parseDownloadFilename(disposition) ||
+        (typeof imageId === "number"
+          ? `${work?.title || "work"}-${label || "image"}.bin`
+          : `${work?.title || "work"}-originals.zip`);
+      saveBlob(res.data, filename);
+      toast.success("下载已开始");
+    } catch (err) {
+      console.error("下载失败", err);
+      toast.error("下载失败");
+    } finally {
+      setDownloading(false);
     }
   };
 
@@ -597,6 +649,29 @@ export function WorkPreviewPage() {
                 <FolderPlus className="h-4 w-4 mr-1" />
                 作品集
               </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" disabled={downloading}>
+                    <Download className="h-4 w-4 mr-1" />
+                    {downloading ? "下载中..." : "下载"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => void handleDownload()}>
+                    全部
+                  </DropdownMenuItem>
+                  {images.map((img, index) => (
+                    <DropdownMenuItem
+                      key={`download-${img.id}`}
+                      onClick={() =>
+                        void handleDownload(img.id, `P${index + 1}`)
+                      }
+                    >
+                      P{index + 1}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <Button
                 onClick={() =>
                   navigate(`/works/${work.id}`, {
