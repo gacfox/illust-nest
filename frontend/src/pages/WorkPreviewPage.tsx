@@ -914,6 +914,17 @@ export function WorkPreviewPage() {
               <FileSearch className="h-4 w-4" />
             </button>
             <button
+              onClick={() =>
+                void handleDownload(activeImage.id, `P${lightboxIndex + 1}`)
+              }
+              className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="下载当前原图"
+              title="下载当前原图"
+              disabled={downloading}
+            >
+              <Download className="h-4 w-4" />
+            </button>
+            <button
               onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
               className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20"
               aria-label="放大"
