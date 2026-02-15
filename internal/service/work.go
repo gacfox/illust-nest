@@ -1,10 +1,10 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"illust-nest/internal/model"
 	"illust-nest/internal/repository"
-	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -475,12 +475,12 @@ func (s *WorkService) GetImageEXIF(workID, imageID uint) (*ImageEXIFInfo, error)
 		return nil, errors.New("EXIF only supports JPG/TIFF source images")
 	}
 
-	fullPath, err := ResolveUploadPath(image.StoragePath)
+	storage, err := GetStorageProvider()
 	if err != nil {
 		return nil, err
 	}
 
-	file, err := os.Open(fullPath)
+	file, _, err := storage.Get(context.Background(), image.StoragePath)
 	if err != nil {
 		return nil, err
 	}

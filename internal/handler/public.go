@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"context"
 	"illust-nest/internal/service"
+	"io"
+	"mime"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -125,18 +127,25 @@ func (h *PublicHandler) servePublicImage(c *gin.Context, prefix string, isThumbn
 		return
 	}
 
-	fullPathAbs, err := service.ResolveUploadPath(relativePath)
+	storage, err := service.GetStorageProvider()
+	if err != nil {
+		InternalError(c)
+		return
+	}
+
+	file, objectInfo, err := storage.Get(context.Background(), relativePath)
 	if err != nil {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
+	defer file.Close()
 
-	fileInfo, err := os.Stat(fullPathAbs)
-	if err != nil || fileInfo.IsDir() {
-		c.AbortWithStatus(http.StatusNotFound)
-		return
+	if objectInfo.ContentType != "" {
+		c.Header("Content-Type", objectInfo.ContentType)
+	} else if contentType := mime.TypeByExtension(strings.ToLower(filepath.Ext(relativePath))); contentType != "" {
+		c.Header("Content-Type", contentType)
 	}
-
 	c.Header("Cache-Control", "public, max-age=31536000, immutable")
-	c.File(fullPathAbs)
+	c.Status(http.StatusOK)
+	_, _ = io.Copy(c.Writer, file)
 }

@@ -11,7 +11,23 @@ database:
   path: ./data/illust-nest.db
 
 storage:
-  upload_base_dir: ./data/uploads
+  main: mylocal
+  backup: minio
+  backup_mode: mirror
+  providers:
+    - name: mylocal
+      type: local
+      upload_base_dir: ./data/uploads
+    - name: minio
+      type: s3
+      endpoint: "127.0.0.1:9000"
+      region: ""
+      bucket: "default"
+      access_key_id: "ciLxPtTB8P2RY3VW"
+      secret_access_key: "Xweuc4oDnpijOpn6Kvk1lp9E9Hy3c2lH"
+      use_ssl: false
+      force_path_style: false
+      prefix: ""
 
 web:
   static_dir: ./frontend/dist

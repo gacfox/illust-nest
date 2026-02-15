@@ -12,6 +12,8 @@
 - 扩展图片格式支持（通过ImageMagick）：PSD / AI（依赖`ghostscript`） / HEIC及HEIF（依赖`libheif`） / AVIF（依赖`libavif`）
 - 作品集管理：将作品整合为作品集维度管理
 - 标签管理：支持标签管理和为作品附加标签
+- 多存储类型支持：支持本地磁盘、S3服务端
+- 自动备份：支持主备双存储后端，备份存储后端支持镜像`mirror`和只写`write_only`模式
 - 公开访问：
   - 公开作品列表与详情接口
   - 公开图片直链（用于外部页面挂载）
@@ -77,7 +79,23 @@ database:
   path: ./data/illust-nest.db # 创建数据库文件的路径
 
 storage:
-  upload_base_dir: ./data/uploads # 图片的存储路径
+  main: mylocal # 主存储后端
+  backup: minio # 备份存储后端（可选）
+  backup_mode: mirror # 备份存储模式，mirror镜像写入和删除操作，write_only只写不删除
+  providers:
+    - name: mylocal # 存储后端名
+      type: local # 存储后端类型，local本地存储，s3为支持S3协议的对象存储（如MinIO、Amazon S3、Cloudflare R2）
+      upload_base_dir: ./data/uploads # 本地存储路径
+    - name: minio
+      type: s3
+      endpoint: "127.0.0.1:9000"
+      region: ""
+      bucket: "default"
+      access_key_id: "ciLxPtTB8P2RY3VW"
+      secret_access_key: "Xweuc4oDnpijOpn6Kvk1lp9E9Hy3c2lH"
+      use_ssl: false
+      force_path_style: false
+      prefix: ""
 
 web:
   static_dir: ./frontend/dist # 静态资源文件夹的路径，部署时需要指定为Vite编译产物的目录
@@ -99,9 +117,3 @@ magick -list format
 - 作品详情：`GET /api/public/works/:id`
 - 作品原图：`GET /api/public/images/originals/*filepath`
 - 作品缩略图：`GET /api/public/images/thumbnails/*filepath`
-
-## 未来计划
-
-- [ ] 支持S3、WebDAV作为存储后端
-- [ ] 支持多存储后端，形成主存储后端/备份存储后端模式
-- [ ] 提供API接口，便于和爬虫、自动化AI等集成

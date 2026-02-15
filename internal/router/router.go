@@ -1,12 +1,15 @@
 package router
 
 import (
+	"context"
 	"illust-nest/internal/config"
 	"illust-nest/internal/database"
 	"illust-nest/internal/handler"
 	"illust-nest/internal/middleware"
 	"illust-nest/internal/repository"
 	"illust-nest/internal/service"
+	"io"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -184,46 +187,45 @@ func setupCollection() *handler.CollectionHandler {
 }
 
 func serveOriginalImage(c *gin.Context) {
-	serveImage(c, filepath.Join(service.UploadBaseDir(), "originals"), c.Param("filepath"))
+	serveImage(c, "uploads/originals", c.Param("filepath"))
 }
 
 func serveThumbnailImage(c *gin.Context) {
-	serveImage(c, filepath.Join(service.UploadBaseDir(), "thumbnails"), c.Param("filepath"))
+	serveImage(c, "uploads/thumbnails", c.Param("filepath"))
 }
 
 func serveTranscodedImage(c *gin.Context) {
-	serveImage(c, filepath.Join(service.UploadBaseDir(), "transcoded"), c.Param("filepath"))
+	serveImage(c, "uploads/transcoded", c.Param("filepath"))
 }
 
-func serveImage(c *gin.Context, rootDir, rawPath string) {
+func serveImage(c *gin.Context, logicalPrefix, rawPath string) {
 	trimmed := strings.TrimSpace(strings.TrimPrefix(rawPath, "/"))
 	cleaned := filepath.ToSlash(filepath.Clean(trimmed))
 	if cleaned == "." || cleaned == "" || strings.HasPrefix(cleaned, "../") || strings.Contains(cleaned, "/../") {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
+	logicalPath := logicalPrefix + "/" + cleaned
 
-	rootAbs, err := filepath.Abs(filepath.Clean(rootDir))
+	storage, err := service.GetStorageProvider()
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
-
-	candidate := filepath.Join(rootAbs, filepath.FromSlash(cleaned))
-	candidateAbs, err := filepath.Abs(candidate)
-	if err != nil || (candidateAbs != rootAbs && !strings.HasPrefix(candidateAbs, rootAbs+string(os.PathSeparator))) {
+	file, objectInfo, err := storage.Get(context.Background(), logicalPath)
+	if err != nil {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
-
-	fileInfo, err := os.Stat(candidateAbs)
-	if err != nil || fileInfo.IsDir() {
-		c.AbortWithStatus(http.StatusNotFound)
-		return
+	defer file.Close()
+	if objectInfo.ContentType != "" {
+		c.Header("Content-Type", objectInfo.ContentType)
+	} else if contentType := mime.TypeByExtension(strings.ToLower(filepath.Ext(logicalPath))); contentType != "" {
+		c.Header("Content-Type", contentType)
 	}
-
-	c.FileAttachment(candidateAbs, "")
 	c.Header("Cache-Control", "max-age=31536000")
+	c.Status(http.StatusOK)
+	_, _ = io.Copy(c.Writer, file)
 }
 
 func serveFrontend(c *gin.Context) {

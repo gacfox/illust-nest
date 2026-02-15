@@ -1,16 +1,18 @@
 package service
 
 import (
+	"bytes"
+	"context"
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"illust-nest/internal/config"
 	"illust-nest/internal/repository"
 	"image"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
 	"io"
+	"mime"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -81,13 +83,23 @@ func (s *ImageService) processImage(file *multipart.FileHeader) (*UploadedImage,
 		return s.processImageWithImageMagick(file)
 	}
 
+	storage, err := GetStorageProvider()
+	if err != nil {
+		return nil, err
+	}
+
 	src, err := file.Open()
 	if err != nil {
 		return nil, err
 	}
 	defer src.Close()
 
-	img, format, err := image.Decode(src)
+	originalBytes, err := io.ReadAll(src)
+	if err != nil {
+		return nil, err
+	}
+
+	img, format, err := image.Decode(bytes.NewReader(originalBytes))
 	if err != nil {
 		return nil, err
 	}
@@ -96,48 +108,53 @@ func (s *ImageService) processImage(file *multipart.FileHeader) (*UploadedImage,
 	height := img.Bounds().Dy()
 
 	uuid := generateUUID()
-	ext := filepath.Ext(file.Filename)
-	originalPath, originalLogicalPath := s.getStoragePath("originals", uuid, ext)
-	thumbnailPath, thumbnailLogicalPath := s.getStoragePath("thumbnails", uuid, ".jpg")
-	transcodedPath := ""
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext == "" {
+		ext = ".jpg"
+	}
+	originalLogicalPath := s.getStoragePath("originals", uuid, ext)
+	thumbnailLogicalPath := s.getStoragePath("thumbnails", uuid, ".jpg")
 	transcodedLogicalPath := ""
 	if shouldTranscodeOriginal(format, ext, file.Header.Get("Content-Type")) {
-		transcodedPath, transcodedLogicalPath = s.getStoragePath("transcoded", uuid+"-transcoded", ".jpg")
+		transcodedLogicalPath = s.getStoragePath("transcoded", uuid+"-transcoded", ".jpg")
 	}
-
-	originalDir := filepath.Dir(originalPath)
-	if err := os.MkdirAll(originalDir, 0755); err != nil {
-		return nil, err
-	}
-
-	thumbnailDir := filepath.Dir(thumbnailPath)
-	if err := os.MkdirAll(thumbnailDir, 0755); err != nil {
-		return nil, err
-	}
-	if transcodedPath != "" {
-		transcodedDir := filepath.Dir(transcodedPath)
-		if err := os.MkdirAll(transcodedDir, 0755); err != nil {
-			return nil, err
-		}
-	}
-
-	src.Seek(0, 0)
-	dst, err := os.Create(originalPath)
-	if err != nil {
-		return nil, err
-	}
-	defer dst.Close()
-
-	if _, err := io.Copy(dst, src); err != nil {
+	if err := storage.Put(
+		context.Background(),
+		originalLogicalPath,
+		bytes.NewReader(originalBytes),
+		int64(len(originalBytes)),
+		contentTypeFromFilename(file.Filename),
+	); err != nil {
 		return nil, err
 	}
 
 	thumbnailImg := imaging.Resize(img, thumbnailMaxWidth, 0, imaging.Lanczos)
-	if err := imaging.Save(thumbnailImg, thumbnailPath, imaging.JPEGQuality(thumbnailQuality)); err != nil {
+	var thumbnailBuffer bytes.Buffer
+	if err := imaging.Encode(&thumbnailBuffer, thumbnailImg, imaging.JPEG, imaging.JPEGQuality(thumbnailQuality)); err != nil {
 		return nil, err
 	}
-	if transcodedPath != "" {
-		if err := imaging.Save(img, transcodedPath, imaging.JPEGQuality(90)); err != nil {
+	if err := storage.Put(
+		context.Background(),
+		thumbnailLogicalPath,
+		bytes.NewReader(thumbnailBuffer.Bytes()),
+		int64(thumbnailBuffer.Len()),
+		"image/jpeg",
+	); err != nil {
+		return nil, err
+	}
+
+	if transcodedLogicalPath != "" {
+		var transcodedBuffer bytes.Buffer
+		if err := imaging.Encode(&transcodedBuffer, img, imaging.JPEG, imaging.JPEGQuality(90)); err != nil {
+			return nil, err
+		}
+		if err := storage.Put(
+			context.Background(),
+			transcodedLogicalPath,
+			bytes.NewReader(transcodedBuffer.Bytes()),
+			int64(transcodedBuffer.Len()),
+			"image/jpeg",
+		); err != nil {
 			return nil, err
 		}
 	}
@@ -168,46 +185,84 @@ func (s *ImageService) processImageWithImageMagick(file *multipart.FileHeader) (
 	}
 	defer src.Close()
 
+	storage, err := GetStorageProvider()
+	if err != nil {
+		return nil, err
+	}
+	originalBytes, err := io.ReadAll(src)
+	if err != nil {
+		return nil, err
+	}
+
 	uuid := generateUUID()
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	if ext == "" {
 		ext = ".psd"
 	}
-	originalPath, originalLogicalPath := s.getStoragePath("originals", uuid, ext)
-	thumbnailPath, thumbnailLogicalPath := s.getStoragePath("thumbnails", uuid, ".jpg")
-	transcodedPath, transcodedLogicalPath := s.getStoragePath("transcoded", uuid+"-transcoded", ".jpg")
+	originalLogicalPath := s.getStoragePath("originals", uuid, ext)
+	thumbnailLogicalPath := s.getStoragePath("thumbnails", uuid, ".jpg")
+	transcodedLogicalPath := s.getStoragePath("transcoded", uuid+"-transcoded", ".jpg")
 
-	for _, dir := range []string{
-		filepath.Dir(originalPath),
-		filepath.Dir(thumbnailPath),
-		filepath.Dir(transcodedPath),
-	} {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return nil, err
-		}
+	if err := storage.Put(
+		context.Background(),
+		originalLogicalPath,
+		bytes.NewReader(originalBytes),
+		int64(len(originalBytes)),
+		contentTypeFromFilename(file.Filename),
+	); err != nil {
+		return nil, err
 	}
 
-	dst, err := os.Create(originalPath)
+	tempDir, err := os.MkdirTemp("", "illust-nest-imagemagick-*")
 	if err != nil {
 		return nil, err
 	}
-	if _, err := io.Copy(dst, src); err != nil {
-		dst.Close()
-		return nil, err
-	}
-	if err := dst.Close(); err != nil {
+	defer os.RemoveAll(tempDir)
+
+	tempInputPath := filepath.Join(tempDir, "input"+ext)
+	tempThumbPath := filepath.Join(tempDir, "thumbnail.jpg")
+	tempTranscodedPath := filepath.Join(tempDir, "transcoded.jpg")
+
+	if err := os.WriteFile(tempInputPath, originalBytes, 0644); err != nil {
 		return nil, err
 	}
 
-	input := originalPath + "[0]"
-	if err := runImageMagick(cfg.Version, input, "-auto-orient", "-flatten", "-quality", "92", transcodedPath); err != nil {
+	input := tempInputPath + "[0]"
+	if err := runImageMagick(cfg.Version, input, "-auto-orient", "-flatten", "-quality", "92", tempTranscodedPath); err != nil {
 		return nil, fmt.Errorf("ImageMagick transcoding failed: %w", err)
 	}
-	if err := runImageMagick(cfg.Version, input, "-auto-orient", "-flatten", "-thumbnail", "400x", "-quality", "85", thumbnailPath); err != nil {
+	if err := runImageMagick(cfg.Version, input, "-auto-orient", "-flatten", "-thumbnail", "400x", "-quality", "85", tempThumbPath); err != nil {
 		return nil, fmt.Errorf("ImageMagick thumbnail generation failed: %w", err)
 	}
 
-	transcodedImg, err := imaging.Open(transcodedPath)
+	transcodedBytes, err := os.ReadFile(tempTranscodedPath)
+	if err != nil {
+		return nil, err
+	}
+	thumbnailBytes, err := os.ReadFile(tempThumbPath)
+	if err != nil {
+		return nil, err
+	}
+	if err := storage.Put(
+		context.Background(),
+		transcodedLogicalPath,
+		bytes.NewReader(transcodedBytes),
+		int64(len(transcodedBytes)),
+		"image/jpeg",
+	); err != nil {
+		return nil, err
+	}
+	if err := storage.Put(
+		context.Background(),
+		thumbnailLogicalPath,
+		bytes.NewReader(thumbnailBytes),
+		int64(len(thumbnailBytes)),
+		"image/jpeg",
+	); err != nil {
+		return nil, err
+	}
+
+	transcodedImg, err := imaging.Decode(bytes.NewReader(transcodedBytes))
 	if err != nil {
 		return nil, fmt.Errorf("failed to open transcoded image: %w", err)
 	}
@@ -225,38 +280,27 @@ func (s *ImageService) processImageWithImageMagick(file *multipart.FileHeader) (
 	}, nil
 }
 
-func (s *ImageService) getStoragePath(subDir, uuid, ext string) (string, string) {
+func (s *ImageService) getStoragePath(subDir, uuid, ext string) string {
 	now := time.Now()
 	year := now.Format("2006")
 	month := now.Format("01")
-	logicalPath := fmt.Sprintf("%s%s/%s/%s/%s%s", logicalUploadPrefix, subDir, year, month, uuid, ext)
-	physicalPath := filepath.Join(uploadBaseDir(), subDir, year, month, uuid+ext)
-	return physicalPath, logicalPath
+	return fmt.Sprintf("%s%s/%s/%s/%s%s", logicalUploadPrefix, subDir, year, month, uuid, ext)
 }
 
 func (s *ImageService) DeleteImage(storagePath, thumbnailPath, transcodedPath string) error {
-	originalFullPath, err := ResolveUploadPath(storagePath)
-	if err != nil {
-		return err
-	}
-	thumbnailFullPath, err := ResolveUploadPath(thumbnailPath)
+	storage, err := GetStorageProvider()
 	if err != nil {
 		return err
 	}
 
-	if err := os.Remove(originalFullPath); err != nil && !os.IsNotExist(err) {
+	if err := storage.Delete(context.Background(), storagePath); err != nil {
 		return err
 	}
-
-	if err := os.Remove(thumbnailFullPath); err != nil && !os.IsNotExist(err) {
+	if err := storage.Delete(context.Background(), thumbnailPath); err != nil {
 		return err
 	}
 	if strings.TrimSpace(transcodedPath) != "" {
-		transcodedFullPath, err := ResolveUploadPath(transcodedPath)
-		if err != nil {
-			return err
-		}
-		if err := os.Remove(transcodedFullPath); err != nil && !os.IsNotExist(err) {
+		if err := storage.Delete(context.Background(), transcodedPath); err != nil {
 			return err
 		}
 	}
@@ -334,42 +378,13 @@ func (s *ImageService) ValidateFormat(file *multipart.FileHeader) bool {
 	return ok
 }
 
-func uploadBaseDir() string {
-	base := strings.TrimSpace(config.GlobalConfig.Storage.UploadBaseDir)
-	if base == "" {
-		return "./data/uploads"
+func contentTypeFromFilename(filename string) string {
+	ext := strings.ToLower(strings.TrimSpace(filepath.Ext(filename)))
+	if ext == "" {
+		return "application/octet-stream"
 	}
-	return base
-}
-
-func UploadBaseDir() string {
-	return uploadBaseDir()
-}
-
-func ResolveUploadPath(logicalPath string) (string, error) {
-	trimmed := strings.TrimSpace(strings.TrimPrefix(logicalPath, "/"))
-	cleaned := filepath.ToSlash(filepath.Clean(trimmed))
-	if cleaned == "." || cleaned == "" || strings.HasPrefix(cleaned, "../") || strings.Contains(cleaned, "/../") {
-		return "", errors.New("invalid upload path")
+	if contentType := mime.TypeByExtension(ext); contentType != "" {
+		return contentType
 	}
-	if !strings.HasPrefix(cleaned, logicalUploadPrefix) {
-		return "", errors.New("invalid upload path")
-	}
-
-	relative := strings.TrimPrefix(cleaned, logicalUploadPrefix)
-	baseAbs, err := filepath.Abs(filepath.Clean(uploadBaseDir()))
-	if err != nil {
-		return "", err
-	}
-
-	candidate := filepath.Join(baseAbs, filepath.FromSlash(relative))
-	candidateAbs, err := filepath.Abs(candidate)
-	if err != nil {
-		return "", err
-	}
-	if candidateAbs != baseAbs && !strings.HasPrefix(candidateAbs, baseAbs+string(os.PathSeparator)) {
-		return "", errors.New("invalid upload path")
-	}
-
-	return candidateAbs, nil
+	return "application/octet-stream"
 }

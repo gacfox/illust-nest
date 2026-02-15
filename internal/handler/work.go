@@ -2,9 +2,9 @@ package handler
 
 import (
 	"archive/zip"
+	"context"
 	"illust-nest/internal/service"
 	"io"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -276,16 +276,17 @@ func (h *WorkHandler) DownloadImages(c *gin.Context) {
 		return
 	}
 
-	fullPathAbs, resolveErr := service.ResolveUploadPath(target.OriginalPath)
-	if resolveErr != nil {
+	storage, err := service.GetStorageProvider()
+	if err != nil {
+		InternalError(c)
+		return
+	}
+	reader, _, err := storage.Get(context.Background(), target.OriginalPath)
+	if err != nil {
 		NotFound(c)
 		return
 	}
-
-	if stat, statErr := os.Stat(fullPathAbs); statErr != nil || stat.IsDir() {
-		NotFound(c)
-		return
-	}
+	defer reader.Close()
 
 	ext := filepath.Ext(target.OriginalPath)
 	if ext == "" {
@@ -296,7 +297,10 @@ func (h *WorkHandler) DownloadImages(c *gin.Context) {
 		filename = "work-" + strconv.FormatUint(uint64(workID), 10)
 	}
 	filename = filename + "-P" + strconv.FormatUint(uint64(target.SortOrder+1), 10) + ext
-	c.FileAttachment(fullPathAbs, filename)
+	c.Header("Content-Disposition", `attachment; filename="`+filename+`"`)
+	c.Header("Content-Type", "application/octet-stream")
+	c.Status(200)
+	_, _ = io.Copy(c.Writer, reader)
 }
 
 func (h *WorkHandler) GetImageEXIF(c *gin.Context) {
@@ -345,6 +349,10 @@ func (h *WorkHandler) downloadAllOriginalsAsZip(c *gin.Context, work *service.Wo
 
 	zipWriter := zip.NewWriter(c.Writer)
 	defer zipWriter.Close()
+	storage, err := service.GetStorageProvider()
+	if err != nil {
+		return
+	}
 
 	for i := range work.Images {
 		image := work.Images[i]
@@ -352,11 +360,7 @@ func (h *WorkHandler) downloadAllOriginalsAsZip(c *gin.Context, work *service.Wo
 			continue
 		}
 
-		fullPathAbs, err := service.ResolveUploadPath(image.OriginalPath)
-		if err != nil {
-			continue
-		}
-		file, err := os.Open(fullPathAbs)
+		file, _, err := storage.Get(context.Background(), image.OriginalPath)
 		if err != nil {
 			continue
 		}
@@ -574,20 +578,21 @@ func (h *WorkHandler) ExportImages(c *gin.Context) {
 	defer zipWriter.Close()
 
 	added := make(map[string]struct{}, len(records))
+	storage, err := service.GetStorageProvider()
+	if err != nil {
+		InternalError(c)
+		return
+	}
 	for _, record := range records {
 		cleanPath := filepath.ToSlash(filepath.Clean(record.Path))
 		if cleanPath == "." || cleanPath == "" || strings.HasPrefix(cleanPath, "..") || strings.Contains(cleanPath, "/../") {
 			continue
 		}
-		fullPathAbs, err := service.ResolveUploadPath(cleanPath)
-		if err != nil {
-			continue
-		}
-		if _, exists := added[fullPathAbs]; exists {
+		if _, exists := added[cleanPath]; exists {
 			continue
 		}
 
-		file, err := os.Open(fullPathAbs)
+		file, _, err := storage.Get(context.Background(), cleanPath)
 		if err != nil {
 			continue
 		}
@@ -601,7 +606,7 @@ func (h *WorkHandler) ExportImages(c *gin.Context) {
 
 		_, _ = io.Copy(entryWriter, file)
 		file.Close()
-		added[fullPathAbs] = struct{}{}
+		added[cleanPath] = struct{}{}
 	}
 
 	indexFile := excelize.NewFile()
