@@ -12,7 +12,7 @@ database:
 
 storage:
   main: mylocal
-  backup: minio
+  backup: ""
   backup_mode: mirror
   providers:
     - name: mylocal
@@ -27,7 +27,13 @@ storage:
       secret_access_key: "Xweuc4oDnpijOpn6Kvk1lp9E9Hy3c2lH"
       use_ssl: false
       force_path_style: false
-      prefix: ""
+      prefix: "illust-nest"
+    - name: mywebdav
+      type: webdav
+      webdav_endpoint: "http://localhost:9090/remote.php/dav/files/root"
+      webdav_username: "root"
+      webdav_password: "abcd1234"
+      webdav_prefix: "illust-nest"
 
 web:
   static_dir: ./frontend/dist

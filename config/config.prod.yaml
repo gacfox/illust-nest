@@ -28,6 +28,12 @@ storage:
       use_ssl: true
       force_path_style: false
       prefix: ""
+    - name: mywebdav
+      type: webdav
+      webdav_endpoint: ""
+      webdav_username: ""
+      webdav_password: ""
+      webdav_prefix: ""
 
 web:
   static_dir: ./frontend/dist

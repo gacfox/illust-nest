@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	github.com/disintegration/imaging v1.6.2
+	github.com/emersion/go-webdav v0.7.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.2.0
 	github.com/minio/minio-go/v7 v7.0.98

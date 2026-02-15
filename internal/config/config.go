@@ -55,6 +55,11 @@ type StorageProviderItem struct {
 	UseSSL          bool   `yaml:"use_ssl"`
 	ForcePathStyle  bool   `yaml:"force_path_style"`
 	Prefix          string `yaml:"prefix"`
+
+	WebDAVEndpoint string `yaml:"webdav_endpoint"`
+	WebDAVUsername string `yaml:"webdav_username"`
+	WebDAVPassword string `yaml:"webdav_password"`
+	WebDAVPrefix   string `yaml:"webdav_prefix"`
 }
 
 var GlobalConfig Config

@@ -1,18 +1,19 @@
 # Illust Nest
 
-超轻量级、自托管的插画和照片图库管理系统，适合部署在树莓派、NAS或云主机上。
+超轻量级、自托管的单用户插画和照片图库管理系统，适合部署在树莓派、NAS或云主机上。
 
 ![截图](doc/1.webp)
 
 ## 核心特性
 
 - 作品管理：图片上传、编辑作品信息、类似Pixiv的图片预览、维护标签与评分、重复图片检测、数据统计、原图下载、EXIF查看（支持JPG/TIFF）
+- 批量操作：支持批量删除、批量设为公开或私密
 - 作品检索：支持按关键字、标签、评分筛选，按时间或评分排序
 - 图片格式支持：PNG / JPG / GIF / WebP / BMP / TIFF
 - 扩展图片格式支持（通过ImageMagick）：PSD / AI（依赖`ghostscript`） / HEIC及HEIF（依赖`libheif`） / AVIF（依赖`libavif`）
 - 作品集管理：将作品整合为作品集维度管理
 - 标签管理：支持标签管理和为作品附加标签
-- 多存储类型支持：支持本地磁盘、S3服务端
+- 多存储类型支持：支持本地磁盘、S3、WebDAV
 - 自动备份：支持主备双存储后端，备份存储后端支持镜像`mirror`和只写`write_only`模式
 - 公开访问：
   - 公开作品列表与详情接口
@@ -83,19 +84,25 @@ storage:
   backup: minio # 备份存储后端（可选）
   backup_mode: mirror # 备份存储模式，mirror镜像写入和删除操作，write_only只写不删除
   providers:
-    - name: mylocal # 存储后端名
-      type: local # 存储后端类型，local本地存储，s3为支持S3协议的对象存储（如MinIO、Amazon S3、Cloudflare R2）
-      upload_base_dir: ./data/uploads # 本地存储路径
+    - name: mylocal # 存储后端名，配置文件中需要唯一
+      type: local # 存储后端类型，local本地存储，s3为支持S3协议的对象存储服务器（如MinIO、Amazon S3、Cloudflare R2等），webdav为支持WebDAV协议的存储服务器（例如NextCloud、支持WebDAV协议的网盘等）
+      upload_base_dir: ./data/uploads
     - name: minio
       type: s3
       endpoint: "127.0.0.1:9000"
       region: ""
       bucket: "default"
-      access_key_id: "ciLxPtTB8P2RY3VW"
-      secret_access_key: "Xweuc4oDnpijOpn6Kvk1lp9E9Hy3c2lH"
+      access_key_id: "root"
+      secret_access_key: "abcd1234"
       use_ssl: false
       force_path_style: false
       prefix: ""
+    - name: mywebdav
+      type: webdav
+      webdav_endpoint: "http://localhost:9090/remote.php/dav/files/root"
+      webdav_username: "root"
+      webdav_password: "abcd1234"
+      webdav_prefix: "illust-nest"
 
 web:
   static_dir: ./frontend/dist # 静态资源文件夹的路径，部署时需要指定为Vite编译产物的目录

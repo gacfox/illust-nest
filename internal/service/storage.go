@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,6 +15,7 @@ import (
 
 	"illust-nest/internal/config"
 
+	webdav "github.com/emersion/go-webdav"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -123,6 +125,27 @@ func newSingleStorageProvider(item config.StorageProviderItem) (StorageProvider,
 			bucket: strings.TrimSpace(item.Bucket),
 			prefix: normalizeStoragePrefix(item.Prefix),
 		}, nil
+	case "webdav":
+		endpoint := strings.TrimSpace(item.WebDAVEndpoint)
+		if endpoint == "" {
+			return nil, errors.New("invalid webdav storage config: webdav_endpoint is required")
+		}
+		httpClient := webdav.HTTPClient(http.DefaultClient)
+		if strings.TrimSpace(item.WebDAVUsername) != "" {
+			httpClient = webdav.HTTPClientWithBasicAuth(
+				httpClient,
+				strings.TrimSpace(item.WebDAVUsername),
+				item.WebDAVPassword,
+			)
+		}
+		client, err := webdav.NewClient(httpClient, endpoint)
+		if err != nil {
+			return nil, err
+		}
+		return &webDAVStorageProvider{
+			client: client,
+			prefix: normalizeStoragePrefix(item.WebDAVPrefix),
+		}, nil
 	default:
 		return nil, fmt.Errorf("unsupported provider type: %s", storageType)
 	}
@@ -171,6 +194,127 @@ func (p *mirroredStorageProvider) Delete(ctx context.Context, logicalPath string
 		}
 	}
 	return nil
+}
+
+type webDAVStorageProvider struct {
+	client *webdav.Client
+	prefix string
+}
+
+func (p *webDAVStorageProvider) Put(ctx context.Context, logicalPath string, reader io.Reader, _ int64, _ string) error {
+	path, err := p.path(logicalPath)
+	if err != nil {
+		return err
+	}
+	if err := p.ensureParentDirs(ctx, path); err != nil {
+		return err
+	}
+	writer, err := p.client.Create(ctx, path)
+	if err != nil {
+		return err
+	}
+	defer writer.Close()
+	if _, err := io.Copy(writer, reader); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (p *webDAVStorageProvider) Get(ctx context.Context, logicalPath string) (io.ReadCloser, ObjectInfo, error) {
+	path, err := p.path(logicalPath)
+	if err != nil {
+		return nil, ObjectInfo{}, err
+	}
+	info, err := p.client.Stat(ctx, path)
+	if err != nil || info.IsDir {
+		return nil, ObjectInfo{}, os.ErrNotExist
+	}
+	file, err := p.client.Open(ctx, path)
+	if err != nil {
+		return nil, ObjectInfo{}, err
+	}
+	return file, ObjectInfo{
+		Size:        info.Size,
+		ContentType: info.MIMEType,
+		ModTime:     info.ModTime,
+	}, nil
+}
+
+func (p *webDAVStorageProvider) Stat(ctx context.Context, logicalPath string) (ObjectInfo, error) {
+	path, err := p.path(logicalPath)
+	if err != nil {
+		return ObjectInfo{}, err
+	}
+	info, err := p.client.Stat(ctx, path)
+	if err != nil || info.IsDir {
+		return ObjectInfo{}, os.ErrNotExist
+	}
+	return ObjectInfo{
+		Size:        info.Size,
+		ContentType: info.MIMEType,
+		ModTime:     info.ModTime,
+	}, nil
+}
+
+func (p *webDAVStorageProvider) Delete(ctx context.Context, logicalPath string) error {
+	path, err := p.path(logicalPath)
+	if err != nil {
+		return err
+	}
+	if err := p.client.RemoveAll(ctx, path); err != nil {
+		if isWebDAVNotFound(err) {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+func (p *webDAVStorageProvider) path(logicalPath string) (string, error) {
+	cleaned, err := normalizeLogicalUploadPath(logicalPath)
+	if err != nil {
+		return "", err
+	}
+	return p.prefix + cleaned, nil
+}
+
+func (p *webDAVStorageProvider) ensureParentDirs(ctx context.Context, path string) error {
+	path = strings.Trim(strings.TrimSpace(path), "/")
+	if path == "" {
+		return nil
+	}
+	parts := strings.Split(path, "/")
+	if len(parts) <= 1 {
+		return nil
+	}
+	current := ""
+	for i := 0; i < len(parts)-1; i++ {
+		if current == "" {
+			current = parts[i]
+		} else {
+			current = current + "/" + parts[i]
+		}
+		if err := p.client.Mkdir(ctx, current); err != nil && !isWebDAVAlreadyExists(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func isWebDAVAlreadyExists(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "already exists") || strings.Contains(msg, "405")
+}
+
+func isWebDAVNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "404") || strings.Contains(msg, "not found")
 }
 
 func normalizeStoragePrefix(prefix string) string {
