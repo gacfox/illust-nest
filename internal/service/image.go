@@ -45,6 +45,11 @@ var allowedUploadFormats = map[string]struct{}{
 	"application/photoshop":   {},
 	"application/x-photoshop": {},
 	"application/psd":         {},
+	"application/postscript":  {},
+	"application/illustrator": {},
+	"image/heic":              {},
+	"image/heif":              {},
+	"image/avif":              {},
 }
 
 const logicalUploadPrefix = "uploads/"
@@ -301,11 +306,15 @@ func (s *ImageService) getImageMagickSettings() (*imageMagickSettings, error) {
 func shouldUseImageMagickForUpload(file *multipart.FileHeader) bool {
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	contentType := strings.ToLower(strings.TrimSpace(file.Header.Get("Content-Type")))
-	if ext == ".psd" {
+	switch ext {
+	case ".psd", ".ai", ".heic", ".heif", ".avif":
 		return true
 	}
 	switch contentType {
-	case "image/psd", "image/x-psd", "image/photoshop", "image/x-photoshop", "application/photoshop", "application/x-photoshop", "application/psd":
+	case "image/psd", "image/x-psd", "image/photoshop", "image/x-photoshop",
+		"application/photoshop", "application/x-photoshop", "application/psd",
+		"application/postscript", "application/illustrator",
+		"image/heic", "image/heif", "image/avif":
 		return true
 	}
 	return false

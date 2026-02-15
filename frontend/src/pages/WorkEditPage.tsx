@@ -476,7 +476,7 @@ export function WorkEditPage() {
                 id="imageUpload"
                 type="file"
                 multiple
-                accept="image/*,.psd"
+                accept="image/*,.psd,.ai,.heic,.heif,.avif"
                 className="hidden"
                 onChange={(e) => handleFiles(e.target.files)}
               />
@@ -485,7 +485,8 @@ export function WorkEditPage() {
               </p>
               {!isNew && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  支持 PNG / JPG / GIF / WebP / BMP / TIFF / PSD
+                  支持 PNG / JPG / GIF / WebP / BMP / TIFF / PSD / AI / HEIC /
+                  HEIF / AVIF
                 </p>
               )}
             </label>
@@ -804,11 +805,20 @@ function shouldShowTranscodePlaceholder(file: File): boolean {
     mime === "application/photoshop" ||
     mime === "application/x-photoshop" ||
     mime === "application/psd" ||
+    mime === "application/postscript" ||
+    mime === "application/illustrator" ||
+    mime === "image/heic" ||
+    mime === "image/heif" ||
+    mime === "image/avif" ||
     ext === "tif" ||
     ext === "tiff" ||
     ext === "bmp" ||
     ext === "dib" ||
-    ext === "psd"
+    ext === "psd" ||
+    ext === "ai" ||
+    ext === "heic" ||
+    ext === "heif" ||
+    ext === "avif"
   );
 }
 
@@ -820,8 +830,14 @@ function isSupportedUploadFile(file: File): boolean {
   }
   return (
     ext === "psd" ||
+    ext === "ai" ||
+    ext === "heic" ||
+    ext === "heif" ||
+    ext === "avif" ||
     mime === "application/photoshop" ||
     mime === "application/x-photoshop" ||
-    mime === "application/psd"
+    mime === "application/psd" ||
+    mime === "application/postscript" ||
+    mime === "application/illustrator"
   );
 }
