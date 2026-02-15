@@ -24,6 +24,7 @@ type WorkImage struct {
 	TranscodedPath string    `gorm:"type:varchar(255);default:''" json:"transcoded_path,omitempty"`
 	ThumbnailPath  string    `gorm:"type:varchar(255);not null" json:"thumbnail_path"`
 	ImageHash      string    `gorm:"type:varchar(64);not null;default:'';index:idx_work_images_image_hash" json:"image_hash,omitempty"`
+	AIMetadata     string    `gorm:"type:text;default:''" json:"ai_metadata,omitempty"`
 	FileSize       int64     `gorm:"not null" json:"file_size"`
 	Width          int       `gorm:"not null" json:"width"`
 	Height         int       `gorm:"not null" json:"height"`

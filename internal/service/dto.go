@@ -139,15 +139,28 @@ type WorkInfo struct {
 }
 
 type ImageInfo struct {
-	ID             uint   `json:"id"`
-	ThumbnailPath  string `json:"thumbnail_path"`
-	OriginalPath   string `json:"original_path,omitempty"`
-	TranscodedPath string `json:"transcoded_path,omitempty"`
-	ImageHash      string `json:"image_hash,omitempty"`
-	FileSize       int64  `json:"file_size,omitempty"`
-	Width          int    `json:"width"`
-	Height         int    `json:"height"`
-	SortOrder      int    `json:"sort_order"`
+	ID             uint             `json:"id"`
+	ThumbnailPath  string           `json:"thumbnail_path"`
+	OriginalPath   string           `json:"original_path,omitempty"`
+	TranscodedPath string           `json:"transcoded_path,omitempty"`
+	ImageHash      string           `json:"image_hash,omitempty"`
+	AIMetadata     *AIImageMetadata `json:"ai_metadata,omitempty"`
+	FileSize       int64            `json:"file_size,omitempty"`
+	Width          int              `json:"width"`
+	Height         int              `json:"height"`
+	SortOrder      int              `json:"sort_order"`
+}
+
+type AIImageMetadata struct {
+	Checkpoint     string                    `json:"checkpoint"`
+	Prompt         string                    `json:"prompt"`
+	NegativePrompt string                    `json:"negative_prompt,omitempty"`
+	OtherMetadata  []AIImageMetadataKeyValue `json:"other_metadata,omitempty"`
+}
+
+type AIImageMetadataKeyValue struct {
+	Key    string   `json:"key"`
+	Values []string `json:"values,omitempty"`
 }
 
 type CreateCollectionRequest struct {
@@ -197,14 +210,15 @@ type WorksResult struct {
 }
 
 type UploadedImage struct {
-	StoragePath      string `json:"storage_path"`
-	ThumbnailPath    string `json:"thumbnail_path"`
-	TranscodedPath   string `json:"transcoded_path,omitempty"`
-	ImageHash        string `json:"image_hash,omitempty"`
-	FileSize         int64  `json:"file_size"`
-	Width            int    `json:"width"`
-	Height           int    `json:"height"`
-	OriginalFilename string `json:"original_filename"`
+	StoragePath      string           `json:"storage_path"`
+	ThumbnailPath    string           `json:"thumbnail_path"`
+	TranscodedPath   string           `json:"transcoded_path,omitempty"`
+	ImageHash        string           `json:"image_hash,omitempty"`
+	AIMetadata       *AIImageMetadata `json:"ai_metadata,omitempty"`
+	FileSize         int64            `json:"file_size"`
+	Width            int              `json:"width"`
+	Height           int              `json:"height"`
+	OriginalFilename string           `json:"original_filename"`
 }
 
 type ImageUploadResponse struct {

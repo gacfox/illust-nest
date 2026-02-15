@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
-import { CircleHelp } from "lucide-react";
+import { CircleHelp, Sparkles, Plus, Trash2 } from "lucide-react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,13 +18,28 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { tagService, workService } from "@/services";
-import type { DuplicateImageInfo, Image, Tag, Work } from "@/types/api";
+import type {
+  AIImageMetadata,
+  AIImageMetadataKeyValue,
+  DuplicateImageInfo,
+  Image,
+  Tag,
+  Work,
+} from "@/types/api";
 import { useAuthStore } from "@/stores";
 import { AuthImage } from "@/components/AuthImage";
 
@@ -38,7 +53,24 @@ type UploadItem = {
   previewUrl: string;
   imageHash: string;
   requiresTranscode: boolean;
+  aiMetadata?: AIImageMetadata;
 };
+
+type EditableAIMetadataItem = {
+  key: string;
+  value1: string;
+  value2: string;
+};
+
+type EditingAIMetadataTarget =
+  | {
+      kind: "new";
+      index: number;
+    }
+  | {
+      kind: "existing";
+      imageId: number;
+    };
 
 export function WorkEditPage() {
   const navigate = useNavigate();
@@ -64,6 +96,16 @@ export function WorkEditPage() {
   const [duplicateImages, setDuplicateImages] = useState<DuplicateImageInfo[]>(
     [],
   );
+  const [aiMetadataDialogOpen, setAIMetadataDialogOpen] = useState(false);
+  const [editingAIMetadataTarget, setEditingAIMetadataTarget] =
+    useState<EditingAIMetadataTarget | null>(null);
+  const [aiMetadataEnabled, setAIMetadataEnabled] = useState(false);
+  const [aiCheckpoint, setAICheckpoint] = useState("");
+  const [aiPrompt, setAIPrompt] = useState("");
+  const [aiNegativePrompt, setAINegativePrompt] = useState("");
+  const [aiOtherMetadata, setAIOtherMetadata] = useState<
+    EditableAIMetadataItem[]
+  >([]);
   const editSource = location.state as
     | {
         from?: string;
@@ -234,6 +276,10 @@ export function WorkEditPage() {
         newUploads.forEach((item) => {
           formData.append("images", item.file);
           formData.append("image_hashes", item.imageHash);
+          formData.append(
+            "image_ai_metadata",
+            item.aiMetadata ? JSON.stringify(item.aiMetadata) : "",
+          );
         });
         const createRes = await workService.create(formData);
         if (createRes.data.code !== 0) {
@@ -271,6 +317,10 @@ export function WorkEditPage() {
           newUploads.forEach((item) => {
             formData.append("images", item.file);
             formData.append("image_hashes", item.imageHash);
+            formData.append(
+              "image_ai_metadata",
+              item.aiMetadata ? JSON.stringify(item.aiMetadata) : "",
+            );
           });
           const uploadRes = await workService.addImages(workId, formData);
           if (uploadRes.data.code !== 0) {
@@ -371,6 +421,168 @@ export function WorkEditPage() {
       prev.forEach((item) => URL.revokeObjectURL(item.previewUrl));
       return [];
     });
+  };
+
+  const openAIMetadataDialogForNewUpload = (index: number) => {
+    const target = newUploads[index];
+    if (!target) {
+      return;
+    }
+    setEditingAIMetadataTarget({ kind: "new", index });
+    const metadata = target.aiMetadata;
+    fillAIMetadataForm(metadata);
+    setAIMetadataDialogOpen(true);
+  };
+
+  const openAIMetadataDialogForExistingImage = (
+    imageId: number,
+    metadata?: AIImageMetadata,
+  ) => {
+    setEditingAIMetadataTarget({ kind: "existing", imageId });
+    fillAIMetadataForm(metadata);
+    setAIMetadataDialogOpen(true);
+  };
+
+  const fillAIMetadataForm = (metadata?: AIImageMetadata) => {
+    if (!metadata) {
+      setAIMetadataEnabled(false);
+      setAICheckpoint("");
+      setAIPrompt("");
+      setAINegativePrompt("");
+      setAIOtherMetadata([]);
+    } else {
+      setAIMetadataEnabled(true);
+      setAICheckpoint(metadata.checkpoint ?? "");
+      setAIPrompt(metadata.prompt ?? "");
+      setAINegativePrompt(metadata.negative_prompt ?? "");
+      setAIOtherMetadata(
+        (metadata.other_metadata ?? []).map((item) => ({
+          key: item.key,
+          value1: item.values?.[0] ?? "",
+          value2: item.values?.[1] ?? "",
+        })),
+      );
+    }
+  };
+
+  const addAIItem = () => {
+    setAIOtherMetadata((prev) => [
+      ...prev,
+      { key: "", value1: "", value2: "" },
+    ]);
+  };
+
+  const updateAIItem = (
+    index: number,
+    field: keyof EditableAIMetadataItem,
+    value: string,
+  ) => {
+    setAIOtherMetadata((prev) =>
+      prev.map((item, idx) =>
+        idx === index
+          ? {
+              ...item,
+              [field]: value,
+            }
+          : item,
+      ),
+    );
+  };
+
+  const removeAIItem = (index: number) => {
+    setAIOtherMetadata((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const saveAIMetadata = async () => {
+    if (editingAIMetadataTarget === null) {
+      return;
+    }
+    if (aiMetadataEnabled) {
+      if (!aiCheckpoint.trim() || !aiPrompt.trim()) {
+        toast.error("开启 AI 元数据时，CHECKPOINT 和 Prompt 为必填");
+        return;
+      }
+    }
+
+    const normalizedOtherMetadata: AIImageMetadataKeyValue[] = aiOtherMetadata
+      .map((item) => {
+        const key = item.key.trim();
+        if (!key) {
+          return null;
+        }
+        const values = [item.value1.trim(), item.value2.trim()].filter(
+          (v) => v.length > 0,
+        );
+        return {
+          key,
+          values,
+        };
+      })
+      .filter((item): item is AIImageMetadataKeyValue => item !== null);
+
+    const metadata = aiMetadataEnabled
+      ? {
+          checkpoint: aiCheckpoint.trim(),
+          prompt: aiPrompt.trim(),
+          negative_prompt: aiNegativePrompt.trim(),
+          other_metadata: normalizedOtherMetadata,
+        }
+      : undefined;
+
+    if (editingAIMetadataTarget.kind === "new") {
+      const targetIndex = editingAIMetadataTarget.index;
+      setNewUploads((prev) =>
+        prev.map((item, idx) =>
+          idx === targetIndex
+            ? {
+                ...item,
+                aiMetadata: metadata,
+              }
+            : item,
+        ),
+      );
+      setAIMetadataDialogOpen(false);
+      toast.success("AI 元数据已更新");
+      return;
+    }
+
+    if (!workId) {
+      toast.error("无效作品 ID");
+      return;
+    }
+
+    try {
+      const imageId = editingAIMetadataTarget.imageId;
+      const res = await workService.updateImageAIMetadata(
+        workId,
+        imageId,
+        metadata ?? null,
+      );
+      if (res.data.code !== 0) {
+        toast.error(res.data.message || "更新 AI 元数据失败");
+        return;
+      }
+      setWork((prev) =>
+        prev
+          ? {
+              ...prev,
+              images: prev.images?.map((img) =>
+                img.id === imageId
+                  ? {
+                      ...img,
+                      ai_metadata: metadata,
+                    }
+                  : img,
+              ),
+            }
+          : prev,
+      );
+      setAIMetadataDialogOpen(false);
+      toast.success("AI 元数据已更新");
+    } catch (err) {
+      console.error("更新 AI 元数据失败", err);
+      toast.error("更新 AI 元数据失败");
+    }
   };
 
   const handleDeleteImage = async (imageId: number) => {
@@ -509,7 +721,7 @@ export function WorkEditPage() {
                       className="w-full aspect-square object-cover"
                     />
                     <div className="flex items-center justify-between px-2 py-2 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-foreground font-medium">
                           #{index + 1}
                         </span>
@@ -536,6 +748,19 @@ export function WorkEditPage() {
                         >
                           下移
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() =>
+                            openAIMetadataDialogForExistingImage(
+                              img.id,
+                              img.ai_metadata,
+                            )
+                          }
+                        >
+                          <Sparkles className="h-3.5 w-3.5 mr-1" />
+                          AI元数据
+                        </Button>
                       </div>
                       <Button
                         variant="ghost"
@@ -554,7 +779,7 @@ export function WorkEditPage() {
           {newUploads.length > 0 && (
             <div className="bg-card border border-border rounded-lg p-4">
               <h3 className="text-sm font-medium text-foreground mb-3">
-                {isNew ? "已上传图片" : "待上传图片"}
+                待上传图片
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {newUploads.map((item, index) => (
@@ -578,7 +803,7 @@ export function WorkEditPage() {
                     )}
                     <div className="flex items-center justify-between px-2 py-2 text-xs text-muted-foreground">
                       {isNew ? (
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <Button
                             variant="ghost"
                             size="xs"
@@ -602,8 +827,29 @@ export function WorkEditPage() {
                           >
                             下移
                           </Button>
+                          <Button
+                            variant="ghost"
+                            size="xs"
+                            onClick={() =>
+                              openAIMetadataDialogForNewUpload(index)
+                            }
+                          >
+                            <Sparkles className="h-3.5 w-3.5 mr-1" />
+                            AI元数据
+                          </Button>
                         </div>
-                      ) : null}
+                      ) : (
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          onClick={() =>
+                            openAIMetadataDialogForNewUpload(index)
+                          }
+                        >
+                          <Sparkles className="h-3.5 w-3.5 mr-1" />
+                          AI元数据
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="xs"
@@ -772,6 +1018,149 @@ export function WorkEditPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog
+        open={aiMetadataDialogOpen}
+        onOpenChange={(open) => {
+          setAIMetadataDialogOpen(open);
+          if (!open) {
+            setEditingAIMetadataTarget(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>编辑 AI 元数据</DialogTitle>
+            <DialogDescription>
+              可选填写。开启后 CHECKPOINT 与 Prompt 为必填项。
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="aiMetadataEnabled"
+                checked={aiMetadataEnabled}
+                onCheckedChange={(checked) =>
+                  setAIMetadataEnabled(checked === true)
+                }
+              />
+              <label
+                htmlFor="aiMetadataEnabled"
+                className="text-sm text-foreground"
+              >
+                启用 AI 元数据
+              </label>
+            </div>
+
+            {aiMetadataEnabled && (
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    CHECKPOINT
+                  </label>
+                  <Input
+                    value={aiCheckpoint}
+                    onChange={(e) => setAICheckpoint(e.target.value)}
+                    placeholder="模型名"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Prompt
+                  </label>
+                  <Textarea
+                    value={aiPrompt}
+                    onChange={(e) => setAIPrompt(e.target.value)}
+                    rows={4}
+                    placeholder="正向提示词"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Negative prompt
+                  </label>
+                  <Textarea
+                    value={aiNegativePrompt}
+                    onChange={(e) => setAINegativePrompt(e.target.value)}
+                    rows={3}
+                    placeholder="负向提示词（可为空）"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-foreground">
+                      Other metadata
+                    </label>
+                    <Button variant="outline" size="sm" onClick={addAIItem}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      添加
+                    </Button>
+                  </div>
+                  {aiOtherMetadata.length === 0 ? (
+                    <div className="text-xs text-muted-foreground">
+                      暂无自定义字段
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {aiOtherMetadata.map((item, index) => (
+                        <div
+                          key={`other-meta-${index}`}
+                          className="grid grid-cols-12 gap-2 items-center"
+                        >
+                          <Input
+                            className="col-span-3"
+                            placeholder="键名"
+                            value={item.key}
+                            onChange={(e) =>
+                              updateAIItem(index, "key", e.target.value)
+                            }
+                          />
+                          <Input
+                            className="col-span-4"
+                            placeholder="值1"
+                            value={item.value1}
+                            onChange={(e) =>
+                              updateAIItem(index, "value1", e.target.value)
+                            }
+                          />
+                          <Input
+                            className="col-span-4"
+                            placeholder="值2(可选)"
+                            value={item.value2}
+                            onChange={(e) =>
+                              updateAIItem(index, "value2", e.target.value)
+                            }
+                          />
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="col-span-1"
+                            onClick={() => removeAIItem(index)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setAIMetadataDialogOpen(false)}
+            >
+              取消
+            </Button>
+            <Button onClick={saveAIMetadata}>保存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }

@@ -106,10 +106,23 @@ export interface Image {
   original_path?: string;
   transcoded_path?: string;
   image_hash?: string;
+  ai_metadata?: AIImageMetadata;
   file_size?: number;
   width: number;
   height: number;
   sort_order: number;
+}
+
+export interface AIImageMetadata {
+  checkpoint: string;
+  prompt: string;
+  negative_prompt?: string;
+  other_metadata?: AIImageMetadataKeyValue[];
+}
+
+export interface AIImageMetadataKeyValue {
+  key: string;
+  values: string[];
 }
 
 export interface Work {
@@ -222,6 +235,7 @@ export interface UploadedImage {
   thumbnail_path: string;
   transcoded_path?: string;
   image_hash?: string;
+  ai_metadata?: AIImageMetadata;
   file_size: number;
   width: number;
   height: number;

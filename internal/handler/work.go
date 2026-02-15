@@ -3,6 +3,7 @@ package handler
 import (
 	"archive/zip"
 	"context"
+	"encoding/json"
 	"illust-nest/internal/service"
 	"io"
 	"path/filepath"
@@ -171,9 +172,17 @@ func (h *WorkHandler) Create(c *gin.Context) {
 	}
 
 	imageHashes := parseImageHashes(form.Value["image_hashes"])
+	aiMetadataList, err := parseImageAIMetadata(form.Value["image_ai_metadata"])
+	if err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
 	for i := range uploadedImages {
 		if i < len(imageHashes) {
 			uploadedImages[i].ImageHash = imageHashes[i]
+		}
+		if i < len(aiMetadataList) {
+			uploadedImages[i].AIMetadata = aiMetadataList[i]
 		}
 	}
 
@@ -447,9 +456,17 @@ func (h *WorkHandler) AddImages(c *gin.Context) {
 	}
 
 	imageHashes := parseImageHashes(form.Value["image_hashes"])
+	aiMetadataList, err := parseImageAIMetadata(form.Value["image_ai_metadata"])
+	if err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
 	for i := range uploadedImages {
 		if i < len(imageHashes) {
 			uploadedImages[i].ImageHash = imageHashes[i]
+		}
+		if i < len(aiMetadataList) {
+			uploadedImages[i].AIMetadata = aiMetadataList[i]
 		}
 	}
 
@@ -493,6 +510,10 @@ type UpdateImageOrderRequest struct {
 	ImageIDs []uint `json:"image_ids" binding:"required,min=1"`
 }
 
+type UpdateImageAIMetadataRequest struct {
+	AIMetadata *service.AIImageMetadata `json:"ai_metadata"`
+}
+
 func (h *WorkHandler) UpdateImageOrder(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 32)
@@ -509,6 +530,44 @@ func (h *WorkHandler) UpdateImageOrder(c *gin.Context) {
 
 	if err := h.workService.UpdateImageOrder(uint(id), req.ImageIDs); err != nil {
 		InternalError(c)
+		return
+	}
+
+	Success(c, nil)
+}
+
+func (h *WorkHandler) UpdateImageAIMetadata(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		BadRequest(c, "invalid work id")
+		return
+	}
+
+	imageIDParam := c.Param("imageId")
+	imageID, err := strconv.ParseUint(imageIDParam, 10, 32)
+	if err != nil {
+		BadRequest(c, "invalid image id")
+		return
+	}
+
+	var req UpdateImageAIMetadataRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	if err := h.workService.UpdateImageAIMetadata(uint(id), uint(imageID), req.AIMetadata); err != nil {
+		msg := strings.ToLower(strings.TrimSpace(err.Error()))
+		if strings.Contains(msg, "not found") {
+			NotFound(c)
+			return
+		}
+		if strings.Contains(msg, "checkpoint and prompt are required") {
+			BadRequest(c, err.Error())
+			return
+		}
+		InternalErrorWithMessage(c, err.Error())
 		return
 	}
 
@@ -671,4 +730,21 @@ func parseImageHashes(values []string) []string {
 		}
 	}
 	return hashes
+}
+
+func parseImageAIMetadata(values []string) ([]*service.AIImageMetadata, error) {
+	result := make([]*service.AIImageMetadata, 0, len(values))
+	for _, raw := range values {
+		trimmed := strings.TrimSpace(raw)
+		if trimmed == "" {
+			result = append(result, nil)
+			continue
+		}
+		var metadata service.AIImageMetadata
+		if err := json.Unmarshal([]byte(trimmed), &metadata); err != nil {
+			return nil, err
+		}
+		result = append(result, &metadata)
+	}
+	return result, nil
 }

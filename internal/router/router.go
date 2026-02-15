@@ -90,6 +90,7 @@ func Setup() *gin.Engine {
 			works.POST("/:id/images", workHandler.AddImages)
 			works.DELETE("/:id/images/:imageId", workHandler.DeleteImage)
 			works.PUT("/:id/images/order", workHandler.UpdateImageOrder)
+			works.PUT("/:id/images/:imageId/ai-metadata", workHandler.UpdateImageAIMetadata)
 		}
 
 		tags := api.Group("/tags")

@@ -6,13 +6,15 @@
 
 ## 核心特性
 
-- 作品管理：图片上传、编辑作品信息、类似Pixiv的图片预览、维护标签与评分、重复图片检测、数据统计、原图下载、EXIF查看（支持JPG/TIFF）
+- 登录鉴权：单管理员用户（基于JWT）
+- 作品管理：图片上传（单作品支持多张图）、编辑作品信息、类似Pixiv的图片预览、维护标签与评分、重复图片检测、数据统计、原图下载、EXIF查看（支持JPG/TIFF）
 - 批量操作：支持批量删除、批量设为公开或私密
 - 作品检索：支持按关键字、标签、评分筛选，按时间或评分排序
 - 图片格式支持：PNG / JPG / GIF / WebP / BMP / TIFF
 - 扩展图片格式支持（通过ImageMagick）：PSD / AI（依赖`ghostscript`） / HEIC及HEIF（依赖`libheif`） / AVIF（依赖`libavif`）
 - 作品集管理：将作品整合为作品集维度管理
 - 标签管理：支持标签管理和为作品附加标签
+- AI元数据编辑：类似Civitai的图片模型、提示词、Lora等信息录入和查看
 - 多存储类型支持：支持本地磁盘、S3、WebDAV
 - 自动备份：支持主备双存储后端，备份存储后端支持镜像`mirror`和只写`write_only`模式
 - 公开访问：
@@ -110,11 +112,13 @@ web:
 
 ## ImageMagick集成
 
-Illust Nest默认仅支持基础图片格式，对于前面列出的扩展格式支持需要额外安装`ImageMagick`并在系统设置中启用集成。`ImageMagick`的v6版本使用`convert`命令，v7版本使用`magick`命令，因此还需要根据具体安装的情况正确选择命令版本。此外`ImageMagick`本身还可能依赖其它库来处理AI、HEIC/HEIF、AVIF，因此这些扩展格式支持是否真的可用需要用户手动确认。执行以下命令可以输出当前安装的`ImageMagick`支持的格式。
+Illust Nest默认仅支持基础图片格式，对于前面列出的扩展格式支持需要额外安装`ImageMagick`并在系统设置中勾选启用选项集成该组件。`ImageMagick`的v6版本使用`convert`命令，v7版本使用`magick`命令，因此还需要根据具体安装的情况正确选择命令版本。此外`ImageMagick`本身还可能依赖其它库来处理AI、HEIC/HEIF、AVIF，因此这些扩展格式支持是否真的可用需要用户手动确认。执行以下命令可以输出当前安装的`ImageMagick`支持的格式。
 
 ```bash
 magick -list format
 ```
+
+注：在类似树莓派的平台上，ImageMagick处理大图片可能有一定性能瓶颈，需要结合实际情况考虑使用。
 
 ## 公开（匿名）访问接口
 

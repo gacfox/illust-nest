@@ -22,6 +22,7 @@ import {
   Copy,
   Download,
   FileSearch,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -146,6 +147,7 @@ export function WorkPreviewPage() {
   const [exifError, setExifError] = useState("");
   const [activeExif, setActiveExif] = useState<ImageExifInfo | null>(null);
   const [exifCache, setExifCache] = useState<Record<number, ImageExifInfo>>({});
+  const [aiMetadataPanelOpen, setAIMetadataPanelOpen] = useState(false);
   const dragStart = useRef({ x: 0, y: 0 });
   const lightboxStageRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -326,6 +328,7 @@ export function WorkPreviewPage() {
   const activeImageSupportsExif = supportsExifByOriginalPath(
     activeImage?.original_path,
   );
+  const activeAIMetadata = activeImage?.ai_metadata;
   const previewSource = location.state as
     | {
         from?: string;
@@ -427,6 +430,7 @@ export function WorkPreviewPage() {
     }
 
     setExifPanelOpen(true);
+    setAIMetadataPanelOpen(false);
     setExifError("");
 
     const cached = exifCache[activeImage.id];
@@ -495,12 +499,14 @@ export function WorkPreviewPage() {
   const goPrev = () => {
     setLightboxIndex((prev) => Math.max(prev - 1, 0));
     setExifPanelOpen(false);
+    setAIMetadataPanelOpen(false);
     resetTransform();
   };
 
   const goNext = () => {
     setLightboxIndex((prev) => Math.min(prev + 1, images.length - 1));
     setExifPanelOpen(false);
+    setAIMetadataPanelOpen(false);
     resetTransform();
   };
 
@@ -544,6 +550,7 @@ export function WorkPreviewPage() {
   useEffect(() => {
     if (!lightboxOpen) {
       setExifPanelOpen(false);
+      setAIMetadataPanelOpen(false);
       setExifError("");
       setActiveExif(null);
       setExifLoading(false);
@@ -901,6 +908,23 @@ export function WorkPreviewPage() {
         <div className="fixed inset-0 z-50 bg-black/80">
           <div className="absolute top-4 right-4 z-20 flex gap-2">
             <button
+              onClick={() => {
+                if (!activeAIMetadata) {
+                  return;
+                }
+                setAIMetadataPanelOpen((prev) => !prev);
+                setExifPanelOpen(false);
+              }}
+              className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="查看AI元数据"
+              disabled={!activeAIMetadata}
+              title={
+                activeAIMetadata ? "查看 AI 元数据" : "当前图片无 AI 元数据"
+              }
+            >
+              <Sparkles className="h-4 w-4" />
+            </button>
+            <button
               onClick={() => void handleOpenExifPanel()}
               className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
               aria-label="查看EXIF"
@@ -953,6 +977,104 @@ export function WorkPreviewPage() {
               <X className="h-4 w-4" />
             </button>
           </div>
+
+          {aiMetadataPanelOpen && activeAIMetadata && (
+            <div className="absolute top-16 right-4 z-20 w-115 max-w-[calc(100vw-2rem)] rounded-md border border-white/20 bg-black/80 p-3 text-white shadow-lg">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div className="text-sm font-medium">AI 元数据</div>
+                <button
+                  onClick={() => setAIMetadataPanelOpen(false)}
+                  className="rounded p-1 text-white/80 hover:bg-white/10 hover:text-white"
+                  aria-label="关闭AI元数据面板"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                <div>
+                  <div className="mb-1 text-[11px] uppercase tracking-wide text-white/70">
+                    CHECKPOINT
+                  </div>
+                  <div className="rounded bg-white/10 px-2 py-1 break-all">
+                    {activeAIMetadata.checkpoint}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-1 flex items-center justify-between">
+                    <div className="text-[11px] uppercase tracking-wide text-white/70">
+                      Prompt
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="xs"
+                      className="h-6 px-2 text-white hover:bg-white/10"
+                      onClick={async () => {
+                        await writeToClipboard(activeAIMetadata.prompt);
+                        toast.success("已复制 Prompt");
+                      }}
+                    >
+                      复制
+                    </Button>
+                  </div>
+                  <div className="max-h-28 overflow-y-auto rounded bg-[#132012] px-2 py-1 text-[#c7f7ad] wrap-break-word">
+                    {activeAIMetadata.prompt}
+                  </div>
+                </div>
+
+                {activeAIMetadata.negative_prompt ? (
+                  <div>
+                    <div className="mb-1 flex items-center justify-between">
+                      <div className="text-[11px] uppercase tracking-wide text-white/70">
+                        Negative prompt
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="xs"
+                        className="h-6 px-2 text-white hover:bg-white/10"
+                        onClick={async () => {
+                          await writeToClipboard(
+                            activeAIMetadata.negative_prompt || "",
+                          );
+                          toast.success("已复制 Negative prompt");
+                        }}
+                      >
+                        复制
+                      </Button>
+                    </div>
+                    <div className="max-h-28 overflow-y-auto rounded bg-[#2a1919] px-2 py-1 text-[#f4b3b3] wrap-break-word">
+                      {activeAIMetadata.negative_prompt}
+                    </div>
+                  </div>
+                ) : null}
+
+                {activeAIMetadata.other_metadata &&
+                activeAIMetadata.other_metadata.length > 0 ? (
+                  <div>
+                    <div className="mb-1 text-[11px] uppercase tracking-wide text-white/70">
+                      Other metadata
+                    </div>
+                    <div className="space-y-1 rounded bg-white/5 p-2">
+                      {activeAIMetadata.other_metadata.map((item, index) => (
+                        <div
+                          key={`${item.key}-${index}`}
+                          className="grid grid-cols-[120px_1fr] gap-2"
+                        >
+                          <div className="text-white/70 break-all">
+                            {item.key}
+                          </div>
+                          <div className="break-all">
+                            {(item.values ?? []).join(" ")}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          )}
 
           {exifPanelOpen && (
             <div className="absolute top-16 right-4 z-20 w-90 max-w-[calc(100vw-2rem)] rounded-md border border-white/20 bg-black/80 p-3 text-white shadow-lg">

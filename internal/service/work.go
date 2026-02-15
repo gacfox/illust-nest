@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"illust-nest/internal/model"
 	"illust-nest/internal/repository"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/rwcarlsen/goexif/exif"
 	"github.com/rwcarlsen/goexif/tiff"
+	"gorm.io/gorm"
 )
 
 type WorkService struct {
@@ -125,11 +127,16 @@ func (s *WorkService) CreateWork(req *CreateWorkRequest, uploadedImages []*Uploa
 
 	var images []model.WorkImage
 	for _, uploaded := range uploadedImages {
+		metadataJSON, err := normalizeAndMarshalAIMetadata(uploaded.AIMetadata)
+		if err != nil {
+			return nil, err
+		}
 		images = append(images, model.WorkImage{
 			StoragePath:    uploaded.StoragePath,
 			TranscodedPath: uploaded.TranscodedPath,
 			ThumbnailPath:  uploaded.ThumbnailPath,
 			ImageHash:      normalizeImageHash(uploaded.ImageHash),
+			AIMetadata:     metadataJSON,
 			FileSize:       uploaded.FileSize,
 			Width:          uploaded.Width,
 			Height:         uploaded.Height,
@@ -224,11 +231,16 @@ func (s *WorkService) AddImages(workID uint, uploadedImages []*UploadedImage) ([
 
 	var images []model.WorkImage
 	for _, uploaded := range uploadedImages {
+		metadataJSON, err := normalizeAndMarshalAIMetadata(uploaded.AIMetadata)
+		if err != nil {
+			return nil, err
+		}
 		images = append(images, model.WorkImage{
 			StoragePath:    uploaded.StoragePath,
 			TranscodedPath: uploaded.TranscodedPath,
 			ThumbnailPath:  uploaded.ThumbnailPath,
 			ImageHash:      normalizeImageHash(uploaded.ImageHash),
+			AIMetadata:     metadataJSON,
 			FileSize:       uploaded.FileSize,
 			Width:          uploaded.Width,
 			Height:         uploaded.Height,
@@ -247,6 +259,7 @@ func (s *WorkService) AddImages(workID uint, uploadedImages []*UploadedImage) ([
 			OriginalPath:   images[i].StoragePath,
 			TranscodedPath: images[i].TranscodedPath,
 			ImageHash:      images[i].ImageHash,
+			AIMetadata:     parseAIMetadata(images[i].AIMetadata),
 			FileSize:       images[i].FileSize,
 			Width:          images[i].Width,
 			Height:         images[i].Height,
@@ -283,6 +296,20 @@ func (s *WorkService) UpdateImageOrder(workID uint, imageIDs []uint) error {
 	return s.workRepo.UpdateImageOrder(workID, imageIDs)
 }
 
+func (s *WorkService) UpdateImageAIMetadata(workID, imageID uint, metadata *AIImageMetadata) error {
+	metadataJSON, err := normalizeAndMarshalAIMetadata(metadata)
+	if err != nil {
+		return err
+	}
+	if err := s.workRepo.UpdateImageAIMetadata(workID, imageID, metadataJSON); err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("image not found")
+		}
+		return err
+	}
+	return nil
+}
+
 func (s *WorkService) workToInfo(work *model.Work, fullDetails bool) *WorkInfo {
 	info := &WorkInfo{
 		ID:          work.ID,
@@ -301,6 +328,7 @@ func (s *WorkService) workToInfo(work *model.Work, fullDetails bool) *WorkInfo {
 			OriginalPath:   work.Images[0].StoragePath,
 			TranscodedPath: work.Images[0].TranscodedPath,
 			ImageHash:      work.Images[0].ImageHash,
+			AIMetadata:     parseAIMetadata(work.Images[0].AIMetadata),
 			FileSize:       work.Images[0].FileSize,
 			Width:          work.Images[0].Width,
 			Height:         work.Images[0].Height,
@@ -318,6 +346,7 @@ func (s *WorkService) workToInfo(work *model.Work, fullDetails bool) *WorkInfo {
 				OriginalPath:   img.StoragePath,
 				TranscodedPath: img.TranscodedPath,
 				ImageHash:      img.ImageHash,
+				AIMetadata:     parseAIMetadata(img.AIMetadata),
 				FileSize:       img.FileSize,
 				Width:          img.Width,
 				Height:         img.Height,
@@ -409,6 +438,62 @@ func splitString(s, sep string) []string {
 
 func normalizeImageHash(hash string) string {
 	return strings.ToLower(strings.TrimSpace(hash))
+}
+
+func normalizeAndMarshalAIMetadata(metadata *AIImageMetadata) (string, error) {
+	if metadata == nil {
+		return "", nil
+	}
+
+	checkpoint := strings.TrimSpace(metadata.Checkpoint)
+	prompt := strings.TrimSpace(metadata.Prompt)
+	if checkpoint == "" || prompt == "" {
+		return "", errors.New("AI metadata checkpoint and prompt are required")
+	}
+
+	normalized := AIImageMetadata{
+		Checkpoint:     checkpoint,
+		Prompt:         prompt,
+		NegativePrompt: strings.TrimSpace(metadata.NegativePrompt),
+		OtherMetadata:  make([]AIImageMetadataKeyValue, 0),
+	}
+
+	for _, item := range metadata.OtherMetadata {
+		key := strings.TrimSpace(item.Key)
+		if key == "" {
+			continue
+		}
+		values := make([]string, 0, len(item.Values))
+		for _, v := range item.Values {
+			value := strings.TrimSpace(v)
+			if value == "" {
+				continue
+			}
+			values = append(values, value)
+		}
+		normalized.OtherMetadata = append(normalized.OtherMetadata, AIImageMetadataKeyValue{
+			Key:    key,
+			Values: values,
+		})
+	}
+
+	payload, err := json.Marshal(normalized)
+	if err != nil {
+		return "", err
+	}
+	return string(payload), nil
+}
+
+func parseAIMetadata(raw string) *AIImageMetadata {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return nil
+	}
+	var metadata AIImageMetadata
+	if err := json.Unmarshal([]byte(trimmed), &metadata); err != nil {
+		return nil
+	}
+	return &metadata
 }
 
 func normalizeImageHashes(hashes []string) []string {

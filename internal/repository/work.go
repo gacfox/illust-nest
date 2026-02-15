@@ -209,6 +209,19 @@ func (r *WorkRepository) UpdateImageOrder(workID uint, imageIDs []uint) error {
 	})
 }
 
+func (r *WorkRepository) UpdateImageAIMetadata(workID, imageID uint, metadata string) error {
+	result := r.DB.Model(&model.WorkImage{}).
+		Where("id = ? AND work_id = ?", imageID, workID).
+		Update("ai_metadata", metadata)
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
+}
+
 func (r *WorkRepository) FindImagesByWorkID(workID uint) ([]model.WorkImage, error) {
 	var images []model.WorkImage
 	err := r.DB.Where("work_id = ?", workID).Order("sort_order ASC").Find(&images).Error

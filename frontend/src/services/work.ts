@@ -9,6 +9,7 @@ import type {
   CheckDuplicateImagesRequest,
   CheckDuplicateImagesResponse,
   ImageExifInfo,
+  AIImageMetadata,
 } from "@/types/api";
 
 export const workService = {
@@ -54,6 +55,18 @@ export const workService = {
     api.put<ApiResponse<void>>(`/api/works/${id}/images/order`, {
       image_ids: imageIds,
     }),
+
+  updateImageAIMetadata: (
+    id: number,
+    imageId: number,
+    aiMetadata: AIImageMetadata | null,
+  ) =>
+    api.put<ApiResponse<void>>(
+      `/api/works/${id}/images/${imageId}/ai-metadata`,
+      {
+        ai_metadata: aiMetadata,
+      },
+    ),
 
   exportImages: () =>
     api.get("/api/works/export/images", {
