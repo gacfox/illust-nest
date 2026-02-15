@@ -3,19 +3,33 @@ package service
 import (
 	"illust-nest/internal/middleware"
 	"illust-nest/internal/repository"
+	"sort"
 )
 
 type SystemService struct {
-	settingRepo *repository.SettingRepository
-	userRepo    *repository.UserRepository
-	authService *AuthService
+	settingRepo    *repository.SettingRepository
+	userRepo       *repository.UserRepository
+	workRepo       *repository.WorkRepository
+	tagRepo        *repository.TagRepository
+	collectionRepo *repository.CollectionRepository
+	authService    *AuthService
 }
 
-func NewSystemService(settingRepo *repository.SettingRepository, userRepo *repository.UserRepository, authService *AuthService) *SystemService {
+func NewSystemService(
+	settingRepo *repository.SettingRepository,
+	userRepo *repository.UserRepository,
+	workRepo *repository.WorkRepository,
+	tagRepo *repository.TagRepository,
+	collectionRepo *repository.CollectionRepository,
+	authService *AuthService,
+) *SystemService {
 	return &SystemService{
-		settingRepo: settingRepo,
-		userRepo:    userRepo,
-		authService: authService,
+		settingRepo:    settingRepo,
+		userRepo:       userRepo,
+		workRepo:       workRepo,
+		tagRepo:        tagRepo,
+		collectionRepo: collectionRepo,
+		authService:    authService,
 	}
 }
 
@@ -98,6 +112,96 @@ func (s *SystemService) UpdateSettings(settings *SystemSettings) error {
 		return err
 	}
 	return nil
+}
+
+func (s *SystemService) GetStatistics() (*SystemStatistics, error) {
+	workCount, err := s.workRepo.Count()
+	if err != nil {
+		return nil, err
+	}
+
+	imageCount, err := s.workRepo.CountImages()
+	if err != nil {
+		return nil, err
+	}
+
+	tagCount, err := s.tagRepo.CountNonSystem()
+	if err != nil {
+		return nil, err
+	}
+
+	collectionCount, err := s.collectionRepo.Count()
+	if err != nil {
+		return nil, err
+	}
+
+	hashCounts, err := s.workRepo.FindDuplicateImageHashCounts()
+	if err != nil {
+		return nil, err
+	}
+
+	duplicateGroups := make([]DuplicateImageGroup, 0, len(hashCounts))
+	if len(hashCounts) > 0 {
+		hashes := make([]string, 0, len(hashCounts))
+		for _, row := range hashCounts {
+			if row.ImageHash == "" {
+				continue
+			}
+			hashes = append(hashes, row.ImageHash)
+		}
+
+		images, err := s.workRepo.FindDuplicateImagesByHashes(hashes, nil)
+		if err != nil {
+			return nil, err
+		}
+
+		worksByHash := make(map[string]map[uint]int64)
+		previewByHash := make(map[string]string)
+		for _, image := range images {
+			if image.ImageHash == "" {
+				continue
+			}
+			if _, ok := worksByHash[image.ImageHash]; !ok {
+				worksByHash[image.ImageHash] = make(map[uint]int64)
+			}
+			worksByHash[image.ImageHash][image.WorkID]++
+			if _, ok := previewByHash[image.ImageHash]; !ok && image.ThumbnailPath != "" {
+				previewByHash[image.ImageHash] = image.ThumbnailPath
+			}
+		}
+
+		for _, row := range hashCounts {
+			workCounter := worksByHash[row.ImageHash]
+			works := make([]DuplicateImageWorkRef, 0, len(workCounter))
+			for workID, count := range workCounter {
+				works = append(works, DuplicateImageWorkRef{
+					WorkID:         workID,
+					DuplicateCount: count,
+				})
+			}
+			sort.Slice(works, func(i, j int) bool {
+				if works[i].DuplicateCount == works[j].DuplicateCount {
+					return works[i].WorkID < works[j].WorkID
+				}
+				return works[i].DuplicateCount > works[j].DuplicateCount
+			})
+
+			duplicateGroups = append(duplicateGroups, DuplicateImageGroup{
+				ImageHash:            row.ImageHash,
+				TotalImages:          row.Count,
+				PreviewThumbnailPath: previewByHash[row.ImageHash],
+				Works:                works,
+			})
+		}
+	}
+
+	return &SystemStatistics{
+		WorkCount:            workCount,
+		ImageCount:           imageCount,
+		TagCount:             tagCount,
+		CollectionCount:      collectionCount,
+		DuplicateImageGroups: duplicateGroups,
+	}, nil
 }
 
 func boolToString(b bool) string {

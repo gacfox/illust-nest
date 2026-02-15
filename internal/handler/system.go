@@ -84,3 +84,21 @@ func (h *SystemHandler) UpdateSettings(c *gin.Context) {
 
 	Success(c, req)
 }
+
+func (h *SystemHandler) GetStatistics(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		Unauthorized(c)
+		return
+	}
+
+	_ = userID
+
+	stats, err := h.systemService.GetStatistics()
+	if err != nil {
+		InternalError(c)
+		return
+	}
+
+	Success(c, stats)
+}

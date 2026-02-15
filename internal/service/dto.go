@@ -35,6 +35,26 @@ type SystemSettings struct {
 	SiteTitle            string `json:"site_title"`
 }
 
+type SystemStatistics struct {
+	WorkCount            int64                 `json:"work_count"`
+	ImageCount           int64                 `json:"image_count"`
+	TagCount             int64                 `json:"tag_count"`
+	CollectionCount      int64                 `json:"collection_count"`
+	DuplicateImageGroups []DuplicateImageGroup `json:"duplicate_image_groups"`
+}
+
+type DuplicateImageGroup struct {
+	ImageHash            string                  `json:"image_hash"`
+	TotalImages          int64                   `json:"total_images"`
+	PreviewThumbnailPath string                  `json:"preview_thumbnail_path,omitempty"`
+	Works                []DuplicateImageWorkRef `json:"works"`
+}
+
+type DuplicateImageWorkRef struct {
+	WorkID         uint  `json:"work_id"`
+	DuplicateCount int64 `json:"duplicate_count"`
+}
+
 type CreateTagRequest struct {
 	Name string `json:"name" binding:"required,min=1,max=50"`
 }

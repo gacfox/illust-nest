@@ -7,6 +7,7 @@ import { SettingsPage } from "@/pages/SettingsPage";
 import { WorkEditPage } from "@/pages/WorkEditPage";
 import { WorkPreviewPage } from "@/pages/WorkPreviewPage";
 import { TagsPage } from "@/pages/TagsPage";
+import { StatisticsPage } from "@/pages/StatisticsPage";
 import { CollectionsPage } from "@/pages/CollectionsPage";
 import { CollectionWorksPage } from "@/pages/CollectionWorksPage";
 import { WorkExportPage } from "@/pages/WorkExportPage";
@@ -44,6 +45,7 @@ export function RoutesView() {
         element={requireAuth(<CollectionWorksPage />)}
       />
       <Route path="/tags" element={requireAuth(<TagsPage />)} />
+      <Route path="/statistics" element={requireAuth(<StatisticsPage />)} />
       <Route path="/settings" element={requireAuth(<SettingsPage />)} />
       <Route path="*" element={<NotFoundPage />} />
     </Routes>

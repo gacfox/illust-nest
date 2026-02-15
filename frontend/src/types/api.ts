@@ -45,6 +45,26 @@ export interface SystemSettings {
   site_title: string;
 }
 
+export interface SystemStatistics {
+  work_count: number;
+  image_count: number;
+  tag_count: number;
+  collection_count: number;
+  duplicate_image_groups: DuplicateImageGroup[];
+}
+
+export interface DuplicateImageGroup {
+  image_hash: string;
+  total_images: number;
+  preview_thumbnail_path?: string;
+  works: DuplicateImageWorkRef[];
+}
+
+export interface DuplicateImageWorkRef {
+  work_id: number;
+  duplicate_count: number;
+}
+
 // Tag
 export interface Tag {
   id: number;

@@ -40,6 +40,7 @@ func Setup() *gin.Engine {
 		system.POST("/init", systemHandler.Init)
 		system.GET("/settings", middleware.Auth(), systemHandler.GetSettings)
 		system.PUT("/settings", middleware.Auth(), systemHandler.UpdateSettings)
+		system.GET("/statistics", middleware.Auth(), systemHandler.GetStatistics)
 	}
 
 	auth := r.Group("/api/auth")
@@ -131,8 +132,18 @@ func setupAuth() *handler.AuthHandler {
 func setupSystem() *handler.SystemHandler {
 	settingRepo := repository.NewSettingRepository(database.DB)
 	userRepo := repository.NewUserRepository(database.DB)
+	workRepo := repository.NewWorkRepository(database.DB)
+	tagRepo := repository.NewTagRepository(database.DB)
+	collectionRepo := repository.NewCollectionRepository(database.DB)
 	authService := service.NewAuthService(userRepo)
-	systemService := service.NewSystemService(settingRepo, userRepo, authService)
+	systemService := service.NewSystemService(
+		settingRepo,
+		userRepo,
+		workRepo,
+		tagRepo,
+		collectionRepo,
+		authService,
+	)
 	return handler.NewSystemHandler(systemService)
 }
 

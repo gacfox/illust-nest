@@ -4,6 +4,7 @@ import type {
   SystemStatus,
   InitRequest,
   SystemSettings,
+  SystemStatistics,
 } from "@/types/api";
 
 export const systemService = {
@@ -17,4 +18,7 @@ export const systemService = {
 
   updateSettings: (data: Partial<SystemSettings>) =>
     api.put<ApiResponse<void>>("/api/system/settings", data),
+
+  getStatistics: () =>
+    api.get<ApiResponse<SystemStatistics>>("/api/system/statistics"),
 };

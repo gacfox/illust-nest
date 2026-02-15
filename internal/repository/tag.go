@@ -99,3 +99,9 @@ func (r *TagRepository) FindByIDs(ids []uint) ([]model.Tag, error) {
 	err := r.DB.Where("id IN ?", ids).Find(&tags).Error
 	return tags, err
 }
+
+func (r *TagRepository) CountNonSystem() (int64, error) {
+	var count int64
+	err := r.DB.Model(&model.Tag{}).Where("is_system = ?", false).Count(&count).Error
+	return count, err
+}

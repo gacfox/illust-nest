@@ -16,6 +16,7 @@ import {
   Download,
   FolderKanban,
   Tags,
+  BarChart3,
   Settings,
   ChevronLeft,
   Menu,
@@ -35,6 +36,7 @@ type AdminLayoutProps = {
   title: string;
   breadcrumbs: BreadcrumbItem[];
   children: React.ReactNode;
+  headerAction?: React.ReactNode;
   onLogout?: () => void;
 };
 
@@ -43,6 +45,7 @@ const navItems = [
   { to: "/works/export", label: "作品导出", icon: Download },
   { to: "/collections", label: "作品集管理", icon: FolderKanban },
   { to: "/tags", label: "标签管理", icon: Tags },
+  { to: "/statistics", label: "数据统计", icon: BarChart3 },
   { to: "/settings", label: "系统设置", icon: Settings },
 ];
 
@@ -72,6 +75,7 @@ export function AdminLayout({
   title,
   breadcrumbs,
   children,
+  headerAction,
   onLogout,
 }: AdminLayoutProps) {
   const [collapsed, setCollapsed] = useState(() => {
@@ -289,7 +293,12 @@ export function AdminLayout({
           </header>
 
           <main className="px-4 py-6 lg:px-6 lg:py-8">
-            <h1 className="text-2xl font-semibold mb-6">{title}</h1>
+            <div className="mb-6 flex items-center justify-between gap-3">
+              <h1 className="text-2xl font-semibold">{title}</h1>
+              {headerAction ? (
+                <div className="shrink-0">{headerAction}</div>
+              ) : null}
+            </div>
             {children}
           </main>
         </div>

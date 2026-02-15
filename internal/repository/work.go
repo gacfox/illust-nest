@@ -10,6 +10,11 @@ type WorkRepository struct {
 	DB *gorm.DB
 }
 
+type DuplicateImageHashCount struct {
+	ImageHash string `gorm:"column:image_hash"`
+	Count     int64  `gorm:"column:count"`
+}
+
 func NewWorkRepository(db *gorm.DB) *WorkRepository {
 	return &WorkRepository{DB: db}
 }
@@ -278,6 +283,24 @@ func (r *WorkRepository) Count() (int64, error) {
 	return count, err
 }
 
+func (r *WorkRepository) CountImages() (int64, error) {
+	var count int64
+	err := r.DB.Model(&model.WorkImage{}).Count(&count).Error
+	return count, err
+}
+
+func (r *WorkRepository) FindDuplicateImageHashCounts() ([]DuplicateImageHashCount, error) {
+	var rows []DuplicateImageHashCount
+	err := r.DB.Model(&model.WorkImage{}).
+		Select("image_hash, COUNT(*) AS count").
+		Where("image_hash <> ?", "").
+		Group("image_hash").
+		Having("COUNT(*) > 1").
+		Order("count DESC, image_hash ASC").
+		Scan(&rows).Error
+	return rows, err
+}
+
 func (r *WorkRepository) FindAllForExport() ([]model.Work, error) {
 	var works []model.Work
 	err := r.DB.Model(&model.Work{}).
@@ -315,7 +338,7 @@ func (r *WorkRepository) FindDuplicateImagesByHashes(hashes []string, excludeWor
 
 	var images []model.WorkImage
 	query := r.DB.Model(&model.WorkImage{}).
-		Select("id", "work_id", "image_hash").
+		Select("id", "work_id", "image_hash", "thumbnail_path").
 		Where("image_hash IN ?", hashes)
 
 	if excludeWorkID != nil {
