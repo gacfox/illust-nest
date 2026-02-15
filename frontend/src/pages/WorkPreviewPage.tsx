@@ -4,7 +4,7 @@ import ReactMarkdown from "react-markdown";
 import { AdminLayout } from "@/components/AdminLayout";
 import { AuthImage } from "@/components/AuthImage";
 import { collectionService, workService } from "@/services";
-import type { Collection, Image, Tag, Work } from "@/types/api";
+import type { Collection, Image, ImageExifInfo, Tag, Work } from "@/types/api";
 import { useAuthStore } from "@/stores";
 import {
   Star,
@@ -21,6 +21,7 @@ import {
   Link2,
   Copy,
   Download,
+  FileSearch,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -102,6 +103,17 @@ function resolveDisplaySource(img: Image): {
   return { path: img.thumbnail_path, variant: "thumbnail" };
 }
 
+function supportsExifByOriginalPath(path?: string): boolean {
+  if (!path) return false;
+  const cleaned = path.toLowerCase();
+  return (
+    cleaned.endsWith(".jpg") ||
+    cleaned.endsWith(".jpeg") ||
+    cleaned.endsWith(".tif") ||
+    cleaned.endsWith(".tiff")
+  );
+}
+
 export function WorkPreviewPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -129,6 +141,11 @@ export function WorkPreviewPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [exifPanelOpen, setExifPanelOpen] = useState(false);
+  const [exifLoading, setExifLoading] = useState(false);
+  const [exifError, setExifError] = useState("");
+  const [activeExif, setActiveExif] = useState<ImageExifInfo | null>(null);
+  const [exifCache, setExifCache] = useState<Record<number, ImageExifInfo>>({});
   const dragStart = useRef({ x: 0, y: 0 });
   const lightboxStageRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -306,6 +323,9 @@ export function WorkPreviewPage() {
   const visibleImages = showAll ? images : images.slice(0, 1);
   const activeImage = images[lightboxIndex];
   const activeDisplay = activeImage ? resolveDisplaySource(activeImage) : null;
+  const activeImageSupportsExif = supportsExifByOriginalPath(
+    activeImage?.original_path,
+  );
   const previewSource = location.state as
     | {
         from?: string;
@@ -399,6 +419,42 @@ export function WorkPreviewPage() {
     }
   };
 
+  const handleOpenExifPanel = async () => {
+    if (!workId || !activeImage) return;
+    if (!activeImageSupportsExif) {
+      toast.error("仅 JPG/TIFF 源图支持 EXIF");
+      return;
+    }
+
+    setExifPanelOpen(true);
+    setExifError("");
+
+    const cached = exifCache[activeImage.id];
+    if (cached) {
+      setActiveExif(cached);
+      return;
+    }
+
+    setExifLoading(true);
+    try {
+      const res = await workService.getImageExif(workId, activeImage.id);
+      if (res.data.code !== 0) {
+        setExifError(res.data.message || "加载 EXIF 失败");
+        setActiveExif(null);
+        return;
+      }
+      const info = res.data.data;
+      setActiveExif(info);
+      setExifCache((prev) => ({ ...prev, [activeImage.id]: info }));
+    } catch (err) {
+      console.error("加载 EXIF 失败", err);
+      setExifError("加载 EXIF 失败");
+      setActiveExif(null);
+    } finally {
+      setExifLoading(false);
+    }
+  };
+
   const resetTransform = () => {
     setZoom(1);
     setOffset({ x: 0, y: 0 });
@@ -438,11 +494,13 @@ export function WorkPreviewPage() {
 
   const goPrev = () => {
     setLightboxIndex((prev) => Math.max(prev - 1, 0));
+    setExifPanelOpen(false);
     resetTransform();
   };
 
   const goNext = () => {
     setLightboxIndex((prev) => Math.min(prev + 1, images.length - 1));
+    setExifPanelOpen(false);
     resetTransform();
   };
 
@@ -482,6 +540,28 @@ export function WorkPreviewPage() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!lightboxOpen) {
+      setExifPanelOpen(false);
+      setExifError("");
+      setActiveExif(null);
+      setExifLoading(false);
+      return;
+    }
+
+    setExifError("");
+    setExifLoading(false);
+    if (!activeImage) {
+      setActiveExif(null);
+      return;
+    }
+    if (!supportsExifByOriginalPath(activeImage.original_path)) {
+      setActiveExif(null);
+      return;
+    }
+    setActiveExif(exifCache[activeImage.id] ?? null);
+  }, [lightboxOpen, lightboxIndex, activeImage, exifCache]);
 
   return (
     <AdminLayout
@@ -644,14 +724,22 @@ export function WorkPreviewPage() {
               <div>创建时间：{formatDateTime(work.created_at)}</div>
             </div>
 
-            <div className="flex gap-3 pt-2">
-              <Button variant="outline" onClick={openAddToCollectionDialog}>
+            <div className="grid grid-cols-2 gap-2 pt-2 sm:flex sm:flex-wrap sm:gap-3">
+              <Button
+                variant="outline"
+                onClick={openAddToCollectionDialog}
+                className="w-full justify-center sm:w-auto"
+              >
                 <FolderPlus className="h-4 w-4 mr-1" />
                 作品集
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" disabled={downloading}>
+                  <Button
+                    variant="outline"
+                    disabled={downloading}
+                    className="w-full justify-center sm:w-auto"
+                  >
                     <Download className="h-4 w-4 mr-1" />
                     {downloading ? "下载中..." : "下载"}
                   </Button>
@@ -678,6 +766,7 @@ export function WorkPreviewPage() {
                     state: previewSource,
                   })
                 }
+                className="w-full justify-center sm:w-auto"
               >
                 <Pencil className="h-4 w-4 mr-1" />
                 编辑
@@ -685,6 +774,7 @@ export function WorkPreviewPage() {
               <Button
                 variant="destructive"
                 onClick={() => setDeleteDialogOpen(true)}
+                className="w-full justify-center sm:w-auto"
               >
                 <Trash2 className="h-4 w-4 mr-1" />
                 删除
@@ -811,6 +901,19 @@ export function WorkPreviewPage() {
         <div className="fixed inset-0 z-50 bg-black/80">
           <div className="absolute top-4 right-4 z-20 flex gap-2">
             <button
+              onClick={() => void handleOpenExifPanel()}
+              className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+              aria-label="查看EXIF"
+              disabled={!activeImageSupportsExif}
+              title={
+                activeImageSupportsExif
+                  ? "查看 EXIF"
+                  : "仅 JPG/TIFF 源图支持 EXIF"
+              }
+            >
+              <FileSearch className="h-4 w-4" />
+            </button>
+            <button
               onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
               className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20"
               aria-label="放大"
@@ -839,6 +942,53 @@ export function WorkPreviewPage() {
               <X className="h-4 w-4" />
             </button>
           </div>
+
+          {exifPanelOpen && (
+            <div className="absolute top-16 right-4 z-20 w-90 max-w-[calc(100vw-2rem)] rounded-md border border-white/20 bg-black/80 p-3 text-white shadow-lg">
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <div className="text-sm font-medium">EXIF 信息</div>
+                <button
+                  onClick={() => setExifPanelOpen(false)}
+                  className="rounded p-1 text-white/80 hover:bg-white/10 hover:text-white"
+                  aria-label="关闭EXIF面板"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              {exifLoading ? (
+                <div className="text-xs text-white/80">加载中...</div>
+              ) : exifError ? (
+                <div className="text-xs text-red-300">{exifError}</div>
+              ) : activeExif ? (
+                <div className="space-y-2">
+                  <div className="text-[11px] text-white/70 break-all">
+                    文件：{activeExif.filename}（
+                    {activeExif.format.toUpperCase()}）
+                  </div>
+                  {activeExif.has_exif && activeExif.fields.length > 0 ? (
+                    <div className="max-h-[45vh] space-y-1 overflow-y-auto pr-1">
+                      {activeExif.fields.map((field) => (
+                        <div
+                          key={`${field.key}-${field.value}`}
+                          className="text-xs"
+                        >
+                          <span className="text-white/70">{field.key}：</span>
+                          <span className="break-all">{field.value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-white/80">
+                      未读取到 EXIF 信息
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-xs text-white/80">暂无 EXIF 信息</div>
+              )}
+            </div>
+          )}
 
           <button
             onClick={goPrev}

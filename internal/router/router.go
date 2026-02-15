@@ -78,6 +78,7 @@ func Setup() *gin.Engine {
 			works.POST("/images/duplicates", workHandler.CheckDuplicateImages)
 			works.POST("", workHandler.Create)
 			works.GET("/:id/download", workHandler.DownloadImages)
+			works.GET("/:id/images/:imageId/exif", workHandler.GetImageEXIF)
 			works.GET("/:id", workHandler.Get)
 			works.PUT("/:id", workHandler.Update)
 			works.DELETE("/:id", workHandler.Delete)

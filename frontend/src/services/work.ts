@@ -8,6 +8,7 @@ import type {
   ImageUploadResponse,
   CheckDuplicateImagesRequest,
   CheckDuplicateImagesResponse,
+  ImageExifInfo,
 } from "@/types/api";
 
 export const workService = {
@@ -69,6 +70,11 @@ export const workService = {
     api.post<ApiResponse<CheckDuplicateImagesResponse>>(
       "/api/works/images/duplicates",
       data,
+    ),
+
+  getImageExif: (id: number, imageId: number) =>
+    api.get<ApiResponse<ImageExifInfo>>(
+      `/api/works/${id}/images/${imageId}/exif`,
     ),
 };
 

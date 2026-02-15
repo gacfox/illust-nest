@@ -230,6 +230,15 @@ func (r *WorkRepository) FindFirstOrDefaultImage(workID uint) (*model.WorkImage,
 	return &image, nil
 }
 
+func (r *WorkRepository) FindImageByID(workID, imageID uint) (*model.WorkImage, error) {
+	var image model.WorkImage
+	err := r.DB.Where("work_id = ? AND id = ?", workID, imageID).First(&image).Error
+	if err != nil {
+		return nil, err
+	}
+	return &image, nil
+}
+
 func (r *WorkRepository) FindByCollectionID(collectionID uint, params map[string]interface{}, page, pageSize int) ([]model.Work, int64, error) {
 	var works []model.Work
 	var total int64

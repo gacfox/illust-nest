@@ -246,3 +246,17 @@ export interface CheckDuplicateImagesRequest {
 export interface CheckDuplicateImagesResponse {
   duplicates: DuplicateImageInfo[];
 }
+
+export interface ImageExifField {
+  key: string;
+  value: string;
+}
+
+export interface ImageExifInfo {
+  work_id: number;
+  image_id: number;
+  has_exif: boolean;
+  fields: ImageExifField[];
+  format: string;
+  filename: string;
+}

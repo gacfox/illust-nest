@@ -299,6 +299,39 @@ func (h *WorkHandler) DownloadImages(c *gin.Context) {
 	c.FileAttachment(fullPathAbs, filename)
 }
 
+func (h *WorkHandler) GetImageEXIF(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		BadRequest(c, "invalid work id")
+		return
+	}
+
+	imageIDParam := c.Param("imageId")
+	imageID, err := strconv.ParseUint(imageIDParam, 10, 32)
+	if err != nil {
+		BadRequest(c, "invalid image id")
+		return
+	}
+
+	info, err := h.workService.GetImageEXIF(uint(id), uint(imageID))
+	if err != nil {
+		msg := strings.ToLower(strings.TrimSpace(err.Error()))
+		if strings.Contains(msg, "not found") {
+			NotFound(c)
+			return
+		}
+		if strings.Contains(msg, "only supports jpg/tiff") {
+			BadRequest(c, err.Error())
+			return
+		}
+		InternalErrorWithMessage(c, err.Error())
+		return
+	}
+
+	Success(c, info)
+}
+
 func (h *WorkHandler) downloadAllOriginalsAsZip(c *gin.Context, work *service.WorkInfo) {
 	filename := sanitizeFilename(work.Title)
 	if filename == "" {

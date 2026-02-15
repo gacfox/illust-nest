@@ -4,8 +4,14 @@ import (
 	"errors"
 	"illust-nest/internal/model"
 	"illust-nest/internal/repository"
+	"os"
+	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/rwcarlsen/goexif/exif"
+	"github.com/rwcarlsen/goexif/tiff"
 )
 
 type WorkService struct {
@@ -456,4 +462,101 @@ func (s *WorkService) CheckDuplicateImages(hashes []string, excludeWorkID *uint)
 		}
 	}
 	return duplicates, nil
+}
+
+func (s *WorkService) GetImageEXIF(workID, imageID uint) (*ImageEXIFInfo, error) {
+	image, err := s.workRepo.FindImageByID(workID, imageID)
+	if err != nil {
+		return nil, errors.New("image not found")
+	}
+
+	ext := strings.ToLower(filepath.Ext(image.StoragePath))
+	if !isEXIFSupportedSourceExt(ext) {
+		return nil, errors.New("EXIF only supports JPG/TIFF source images")
+	}
+
+	fullPath, err := ResolveUploadPath(image.StoragePath)
+	if err != nil {
+		return nil, err
+	}
+
+	file, err := os.Open(fullPath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	info := &ImageEXIFInfo{
+		WorkID:   workID,
+		ImageID:  imageID,
+		HasEXIF:  false,
+		Fields:   []ImageEXIFField{},
+		Format:   strings.TrimPrefix(ext, "."),
+		Filename: filepath.Base(image.StoragePath),
+	}
+
+	meta, err := exif.Decode(file)
+	if err != nil {
+		if isNoEXIFDecodeError(err) {
+			return info, nil
+		}
+		return nil, err
+	}
+
+	walker := &imageEXIFWalker{
+		fields: make([]ImageEXIFField, 0),
+	}
+	if err := meta.Walk(walker); err != nil {
+		return nil, err
+	}
+
+	sort.Slice(walker.fields, func(i, j int) bool {
+		return walker.fields[i].Key < walker.fields[j].Key
+	})
+	info.Fields = walker.fields
+	info.HasEXIF = len(walker.fields) > 0
+	return info, nil
+}
+
+func isEXIFSupportedSourceExt(ext string) bool {
+	switch strings.ToLower(strings.TrimSpace(ext)) {
+	case ".jpg", ".jpeg", ".tif", ".tiff":
+		return true
+	default:
+		return false
+	}
+}
+
+func isNoEXIFDecodeError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(strings.TrimSpace(err.Error()))
+	noExifMarkers := []string{
+		"no exif data",
+		"failed to find exif intro marker",
+		"failed to find beginning of tiff header",
+		"failed to read tiff",
+	}
+	for _, marker := range noExifMarkers {
+		if strings.Contains(msg, marker) {
+			return true
+		}
+	}
+	return false
+}
+
+type imageEXIFWalker struct {
+	fields []ImageEXIFField
+}
+
+func (w *imageEXIFWalker) Walk(name exif.FieldName, tag *tiff.Tag) error {
+	if tag == nil {
+		return nil
+	}
+	w.fields = append(w.fields, ImageEXIFField{
+		Key:   string(name),
+		Value: strings.TrimSpace(tag.String()),
+	})
+	return nil
 }

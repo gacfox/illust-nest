@@ -234,3 +234,17 @@ type DuplicateImageInfo struct {
 type DuplicateImageCheckResponse struct {
 	Duplicates []DuplicateImageInfo `json:"duplicates"`
 }
+
+type ImageEXIFField struct {
+	Key   string `json:"key"`
+	Value string `json:"value"`
+}
+
+type ImageEXIFInfo struct {
+	WorkID   uint             `json:"work_id"`
+	ImageID  uint             `json:"image_id"`
+	HasEXIF  bool             `json:"has_exif"`
+	Fields   []ImageEXIFField `json:"fields"`
+	Format   string           `json:"format"`
+	Filename string           `json:"filename"`
+}
