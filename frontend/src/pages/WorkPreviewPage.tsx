@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { AdminLayout } from "@/components/AdminLayout";
 import { AuthImage } from "@/components/AuthImage";
 import { collectionService, workService } from "@/services";
@@ -652,7 +653,9 @@ export function WorkPreviewPage() {
               </h2>
               {work.description ? (
                 <div className="markdown-body mt-2 text-sm leading-relaxed">
-                  <ReactMarkdown>{work.description}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {work.description}
+                  </ReactMarkdown>
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground mt-2">无描述</p>
@@ -1008,14 +1011,16 @@ export function WorkPreviewPage() {
                     </div>
                     <Button
                       variant="ghost"
-                      size="xs"
-                      className="h-6 px-2 text-white hover:bg-white/10"
+                      size="icon-xs"
+                      className="text-white/80 hover:bg-white/10 hover:text-white"
                       onClick={async () => {
                         await writeToClipboard(activeAIMetadata.prompt);
                         toast.success("已复制 Prompt");
                       }}
+                      aria-label="复制 Prompt"
+                      title="复制 Prompt"
                     >
-                      复制
+                      <Copy className="h-3 w-3" />
                     </Button>
                   </div>
                   <div className="max-h-28 overflow-y-auto rounded bg-[#132012] px-2 py-1 text-[#c7f7ad] wrap-break-word">
@@ -1031,16 +1036,18 @@ export function WorkPreviewPage() {
                       </div>
                       <Button
                         variant="ghost"
-                        size="xs"
-                        className="h-6 px-2 text-white hover:bg-white/10"
+                        size="icon-xs"
+                        className="text-white/80 hover:bg-white/10 hover:text-white"
                         onClick={async () => {
                           await writeToClipboard(
                             activeAIMetadata.negative_prompt || "",
                           );
                           toast.success("已复制 Negative prompt");
                         }}
+                        aria-label="复制 Negative prompt"
+                        title="复制 Negative prompt"
                       >
-                        复制
+                        <Copy className="h-3 w-3" />
                       </Button>
                     </div>
                     <div className="max-h-28 overflow-y-auto rounded bg-[#2a1919] px-2 py-1 text-[#f4b3b3] wrap-break-word">

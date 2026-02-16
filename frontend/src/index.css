@@ -241,23 +241,47 @@
 }
 
 .markdown-body table {
-  margin: 1em 0;
-  border-collapse: collapse;
+  margin: 1.25em 0;
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background-color: var(--card);
   overflow-x: auto;
 }
 
 .markdown-body th,
 .markdown-body td {
-  padding: 0.5em 1em;
-  border: 1px solid hsl(var(--border));
+  padding: 0.65em 0.9em;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
 }
 
 .markdown-body th {
   font-weight: 600;
-  background-color: hsl(var(--muted));
+  letter-spacing: 0.01em;
+  color: var(--foreground);
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, var(--muted) 70%, var(--background) 30%),
+    var(--muted)
+  );
 }
 
 .markdown-body tr:nth-child(even) {
-  background-color: hsl(var(--muted) / 0.3);
+  background-color: color-mix(in oklab, var(--muted) 42%, transparent);
+}
+
+.markdown-body tr:hover td {
+  background-color: color-mix(in oklab, var(--accent) 35%, transparent);
+}
+
+.markdown-body tr > *:last-child {
+  border-right: none;
+}
+
+.markdown-body tbody tr:last-child td {
+  border-bottom: none;
 }
