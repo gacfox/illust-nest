@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"illust-nest/internal/config"
 	"illust-nest/internal/model"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
 	_ "modernc.org/sqlite"
 )
 
@@ -19,7 +21,16 @@ func openPureGoSQLite(dsn string) (*gorm.DB, error) {
 		DSN:        dsn,
 		DriverName: "sqlite",
 	}
-	return gorm.Open(&dialector, &gorm.Config{})
+	logger := gormlogger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
+		gormlogger.Config{
+			SlowThreshold:             time.Second,
+			LogLevel:                  gormlogger.Warn,
+			IgnoreRecordNotFoundError: true,
+			Colorful:                  false,
+		},
+	)
+	return gorm.Open(&dialector, &gorm.Config{Logger: logger})
 }
 
 var DB *gorm.DB
