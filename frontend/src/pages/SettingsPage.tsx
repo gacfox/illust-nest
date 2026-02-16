@@ -164,6 +164,24 @@ export function SettingsPage() {
                 >
                   启用公开展示
                 </label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5 rounded-full text-muted-foreground"
+                        aria-label="公开展示说明"
+                      >
+                        <CircleHelp className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" sideOffset={6}>
+                      勾选后，匿名用户可访问公开作品列表与详情、与之关联的图片及所有标签信息。
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
           </div>

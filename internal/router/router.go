@@ -57,10 +57,17 @@ func Setup() *gin.Engine {
 
 	public := r.Group("/api/public")
 	{
+		settingRepo := repository.NewSettingRepository(database.DB)
+		public.Use(middleware.PublicGalleryEnabled(settingRepo))
+		publicTags := public.Group("/tags")
+		{
+			publicTags.GET("", publicHandler.ListTags)
+		}
 		publicWorks := public.Group("/works")
 		{
 			publicWorks.GET("", publicHandler.ListWorks)
 			publicWorks.GET("/:id", publicHandler.GetWork)
+			publicWorks.GET("/:id/images/:imageId/exif", publicHandler.GetImageEXIF)
 		}
 
 		publicImages := public.Group("/images")
@@ -171,7 +178,8 @@ func setupPublic() *handler.PublicHandler {
 	settingRepo := repository.NewSettingRepository(database.DB)
 	imageService := service.NewImageService(settingRepo)
 	workService := service.NewWorkService(workRepo, tagRepo, imageService)
-	return handler.NewPublicHandler(workService)
+	tagService := service.NewTagService(tagRepo)
+	return handler.NewPublicHandler(workService, tagService)
 }
 
 func setupTag() *handler.TagHandler {

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"illust-nest/internal/service"
 	"io"
 	"mime"
@@ -15,10 +16,14 @@ import (
 
 type PublicHandler struct {
 	workService *service.WorkService
+	tagService  *service.TagService
 }
 
-func NewPublicHandler(workService *service.WorkService) *PublicHandler {
-	return &PublicHandler{workService: workService}
+func NewPublicHandler(workService *service.WorkService, tagService *service.TagService) *PublicHandler {
+	return &PublicHandler{
+		workService: workService,
+		tagService:  tagService,
+	}
 }
 
 func (h *PublicHandler) ListWorks(c *gin.Context) {
@@ -78,6 +83,19 @@ func (h *PublicHandler) ListWorks(c *gin.Context) {
 	Success(c, result)
 }
 
+func (h *PublicHandler) ListTags(c *gin.Context) {
+	keyword := c.Query("keyword")
+	includeCount := c.DefaultQuery("include_count", "false") == "true"
+
+	tags, err := h.tagService.GetTags(keyword, includeCount)
+	if err != nil {
+		InternalError(c)
+		return
+	}
+
+	Success(c, gin.H{"items": tags})
+}
+
 func (h *PublicHandler) GetWork(c *gin.Context) {
 	idParam := c.Param("id")
 	id, err := strconv.ParseUint(idParam, 10, 32)
@@ -93,6 +111,57 @@ func (h *PublicHandler) GetWork(c *gin.Context) {
 	}
 
 	Success(c, work)
+}
+
+func (h *PublicHandler) GetImageEXIF(c *gin.Context) {
+	idParam := c.Param("id")
+	id, err := strconv.ParseUint(idParam, 10, 32)
+	if err != nil {
+		BadRequest(c, "invalid work id")
+		return
+	}
+	workID := uint(id)
+
+	imageIDParam := c.Param("imageId")
+	imageID, err := strconv.ParseUint(imageIDParam, 10, 32)
+	if err != nil {
+		BadRequest(c, "invalid image id")
+		return
+	}
+	targetImageID := uint(imageID)
+
+	work, err := h.workService.GetPublicWorkByID(workID)
+	if err != nil {
+		NotFound(c)
+		return
+	}
+	found := false
+	for _, img := range work.Images {
+		if img.ID == targetImageID {
+			found = true
+			break
+		}
+	}
+	if !found {
+		NotFound(c)
+		return
+	}
+
+	info, err := h.workService.GetImageEXIF(workID, targetImageID)
+	if err != nil {
+		if errors.Is(err, service.ErrImageNotFound) {
+			NotFound(c)
+			return
+		}
+		if errors.Is(err, service.ErrEXIFUnsupportedSourceType) {
+			BadRequest(c, err.Error())
+			return
+		}
+		InternalErrorWithMessage(c, err.Error())
+		return
+	}
+
+	Success(c, info)
 }
 
 func (h *PublicHandler) GetOriginalImage(c *gin.Context) {

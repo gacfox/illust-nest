@@ -12,6 +12,9 @@ export const tagService = {
   list: (params?: { keyword?: string; include_count?: boolean }) =>
     api.get<ApiResponse<{ items: Tag[] }>>("/api/tags", { params }),
 
+  listPublic: (params?: { keyword?: string; include_count?: boolean }) =>
+    api.get<ApiResponse<{ items: Tag[] }>>("/api/public/tags", { params }),
+
   create: (data: CreateTagRequest) =>
     api.post<ApiResponse<Tag>>("/api/tags", data),
 

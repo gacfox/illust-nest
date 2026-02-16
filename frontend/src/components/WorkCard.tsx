@@ -11,6 +11,7 @@ type WorkCardProps = {
   topLeftOverlay?: ReactNode;
   bottomLeftOverlay?: ReactNode;
   showPublicBadge?: boolean;
+  publicAccess?: boolean;
 };
 
 export function WorkCard({
@@ -19,6 +20,7 @@ export function WorkCard({
   topLeftOverlay,
   bottomLeftOverlay,
   showPublicBadge = false,
+  publicAccess = false,
 }: WorkCardProps) {
   const tagNames = work.tags?.map((tag) => tag.name) ?? [];
   const adultBadge = tagNames.includes("R18G")
@@ -46,6 +48,7 @@ export function WorkCard({
               alt={work.title}
               className="w-full h-55 object-cover"
               lazy
+              publicAccess={publicAccess}
             />
           </button>
         ) : (

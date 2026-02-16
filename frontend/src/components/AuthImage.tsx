@@ -7,6 +7,7 @@ type AuthImageProps = {
   className?: string;
   variant?: "thumbnail" | "original" | "transcoded";
   lazy?: boolean;
+  publicAccess?: boolean;
 };
 
 export function AuthImage({
@@ -15,6 +16,7 @@ export function AuthImage({
   className,
   variant = "thumbnail",
   lazy = false,
+  publicAccess = false,
 }: AuthImageProps) {
   const [src, setSrc] = useState<string>("");
   const [shouldLoad, setShouldLoad] = useState<boolean>(!lazy);
@@ -61,10 +63,16 @@ export function AuthImage({
       try {
         const res =
           variant === "original"
-            ? await imageService.fetchOriginal(path)
+            ? publicAccess
+              ? await imageService.fetchPublicOriginal(path)
+              : await imageService.fetchOriginal(path)
             : variant === "transcoded"
-              ? await imageService.fetchTranscoded(path)
-              : await imageService.fetchThumbnail(path);
+              ? publicAccess
+                ? await imageService.fetchPublicTranscoded(path)
+                : await imageService.fetchTranscoded(path)
+              : publicAccess
+                ? await imageService.fetchPublicThumbnail(path)
+                : await imageService.fetchThumbnail(path);
         objectUrl = URL.createObjectURL(res.data);
         if (!revoked) {
           setSrc(objectUrl);
@@ -82,7 +90,7 @@ export function AuthImage({
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [path, variant, shouldLoad]);
+  }, [path, variant, shouldLoad, publicAccess]);
 
   if (!src) {
     return (

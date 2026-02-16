@@ -6,12 +6,14 @@ import { SettingsPage } from "@/pages/SettingsPage";
 
 import { WorkEditPage } from "@/pages/WorkEditPage";
 import { WorkPreviewPage } from "@/pages/WorkPreviewPage";
+import { PublicWorksPage } from "@/pages/PublicWorksPage";
 import { TagsPage } from "@/pages/TagsPage";
 import { StatisticsPage } from "@/pages/StatisticsPage";
 import { CollectionsPage } from "@/pages/CollectionsPage";
 import { CollectionWorksPage } from "@/pages/CollectionWorksPage";
 import { WorkExportPage } from "@/pages/WorkExportPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
+import { PublicGalleryGuard } from "@/components/PublicGalleryGuard";
 
 export function RoutesView() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -36,6 +38,22 @@ export function RoutesView() {
       <Route
         path="/works/:id/preview"
         element={requireAuth(<WorkPreviewPage />)}
+      />
+      <Route
+        path="/public/works"
+        element={
+          <PublicGalleryGuard>
+            <PublicWorksPage />
+          </PublicGalleryGuard>
+        }
+      />
+      <Route
+        path="/public/works/:id/preview"
+        element={
+          <PublicGalleryGuard>
+            <WorkPreviewPage publicMode />
+          </PublicGalleryGuard>
+        }
       />
       <Route path="/works/:id" element={requireAuth(<WorkEditPage />)} />
       <Route path="/works/export" element={requireAuth(<WorkExportPage />)} />

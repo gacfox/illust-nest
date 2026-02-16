@@ -16,12 +16,18 @@ export const workService = {
   list: (params?: WorkListParams) =>
     api.get<ApiResponse<WorkPagedResult>>("/api/works", { params }),
 
+  listPublic: (params?: WorkListParams) =>
+    api.get<ApiResponse<WorkPagedResult>>("/api/public/works", { params }),
+
   create: (data: FormData) =>
     api.post<ApiResponse<Work>>("/api/works", data, {
       headers: { "Content-Type": "multipart/form-data" },
     }),
 
   get: (id: number) => api.get<ApiResponse<Work>>(`/api/works/${id}`),
+
+  getPublic: (id: number) =>
+    api.get<ApiResponse<Work>>(`/api/public/works/${id}`),
 
   update: (id: number, data: UpdateWorkRequest) =>
     api.put<ApiResponse<Work>>(`/api/works/${id}`, data),
@@ -89,6 +95,11 @@ export const workService = {
     api.get<ApiResponse<ImageExifInfo>>(
       `/api/works/${id}/images/${imageId}/exif`,
     ),
+
+  getPublicImageExif: (id: number, imageId: number) =>
+    api.get<ApiResponse<ImageExifInfo>>(
+      `/api/public/works/${id}/images/${imageId}/exif`,
+    ),
 };
 
 export const imageService = {
@@ -111,6 +122,24 @@ export const imageService = {
     api.get(imageService.getTranscoded(path), { responseType: "blob" }),
   fetchThumbnail: (path: string) =>
     api.get(imageService.getThumbnail(path), { responseType: "blob" }),
+  getPublicOriginal: (path: string) => {
+    const normalized = normalizeImagePath(path, ["uploads/originals/"]);
+    return `/api/public/images/originals${normalized}`;
+  },
+  getPublicThumbnail: (path: string) => {
+    const normalized = normalizeImagePath(path, ["uploads/thumbnails/"]);
+    return `/api/public/images/thumbnails${normalized}`;
+  },
+  getPublicTranscoded: (path: string) => {
+    const normalized = normalizeImagePath(path, ["uploads/transcoded/"]);
+    return `/api/public/images/transcoded${normalized}`;
+  },
+  fetchPublicOriginal: (path: string) =>
+    api.get(imageService.getPublicOriginal(path), { responseType: "blob" }),
+  fetchPublicTranscoded: (path: string) =>
+    api.get(imageService.getPublicTranscoded(path), { responseType: "blob" }),
+  fetchPublicThumbnail: (path: string) =>
+    api.get(imageService.getPublicThumbnail(path), { responseType: "blob" }),
 };
 
 function normalizeImagePath(path: string, prefixes: string[]) {

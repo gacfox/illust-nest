@@ -116,7 +116,11 @@ function supportsExifByOriginalPath(path?: string): boolean {
   );
 }
 
-export function WorkPreviewPage() {
+export function WorkPreviewPage({
+  publicMode = false,
+}: {
+  publicMode?: boolean;
+}) {
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -168,7 +172,9 @@ export function WorkPreviewPage() {
     }
     const load = async () => {
       try {
-        const res = await workService.get(workId);
+        const res = publicMode
+          ? await workService.getPublic(workId)
+          : await workService.get(workId);
         if (res.data.code === 0) {
           setWork(res.data.data as WorkDetail);
         }
@@ -179,7 +185,7 @@ export function WorkPreviewPage() {
       }
     };
     load();
-  }, [workId, navigate]);
+  }, [workId, navigate, publicMode]);
 
   const handleLogout = () => {
     clearAuth();
@@ -188,7 +194,7 @@ export function WorkPreviewPage() {
   };
 
   const handleDelete = async () => {
-    if (!workId) return;
+    if (!workId || publicMode) return;
     setDeleting(true);
     try {
       await workService.delete(workId);
@@ -442,7 +448,9 @@ export function WorkPreviewPage() {
 
     setExifLoading(true);
     try {
-      const res = await workService.getImageExif(workId, activeImage.id);
+      const res = publicMode
+        ? await workService.getPublicImageExif(workId, activeImage.id)
+        : await workService.getImageExif(workId, activeImage.id);
       if (res.data.code !== 0) {
         setExifError(res.data.message || "加载 EXIF 失败");
         setActiveExif(null);
@@ -593,7 +601,7 @@ export function WorkPreviewPage() {
               { label: work?.title || "作品预览" },
             ]
       }
-      onLogout={handleLogout}
+      onLogout={publicMode ? undefined : handleLogout}
     >
       {loading ? (
         <div className="text-center text-muted-foreground">加载中...</div>
@@ -620,6 +628,7 @@ export function WorkPreviewPage() {
                           path={display.path}
                           alt={work?.title ?? ""}
                           variant={display.variant}
+                          publicAccess={publicMode}
                           className="w-full max-h-155 object-contain bg-muted"
                         />
                       </Button>
@@ -734,178 +743,199 @@ export function WorkPreviewPage() {
               <div>创建时间：{formatDateTime(work.created_at)}</div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2 pt-2 sm:flex sm:flex-wrap sm:gap-3">
-              <Button
-                variant="outline"
-                onClick={openAddToCollectionDialog}
-                className="w-full justify-center sm:w-auto"
-              >
-                <FolderPlus className="h-4 w-4 mr-1" />
-                作品集
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    disabled={downloading}
-                    className="w-full justify-center sm:w-auto"
-                  >
-                    <Download className="h-4 w-4 mr-1" />
-                    {downloading ? "下载中..." : "下载"}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start">
-                  <DropdownMenuItem onClick={() => void handleDownload()}>
-                    全部
-                  </DropdownMenuItem>
-                  {images.map((img, index) => (
-                    <DropdownMenuItem
-                      key={`download-${img.id}`}
-                      onClick={() =>
-                        void handleDownload(img.id, `P${index + 1}`)
-                      }
+            {publicMode && (
+              <div className="pt-2">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate("/public/works")}
+                  className="w-full justify-center sm:w-auto"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" />
+                  返回公开作品
+                </Button>
+              </div>
+            )}
+
+            {!publicMode && (
+              <div className="grid grid-cols-2 gap-2 pt-2 sm:flex sm:flex-wrap sm:gap-3">
+                <Button
+                  variant="outline"
+                  onClick={openAddToCollectionDialog}
+                  className="w-full justify-center sm:w-auto"
+                >
+                  <FolderPlus className="h-4 w-4 mr-1" />
+                  作品集
+                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      disabled={downloading}
+                      className="w-full justify-center sm:w-auto"
                     >
-                      P{index + 1}
+                      <Download className="h-4 w-4 mr-1" />
+                      {downloading ? "下载中..." : "下载"}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => void handleDownload()}>
+                      全部
                     </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-              <Button
-                onClick={() =>
-                  navigate(`/works/${work.id}`, {
-                    state: previewSource,
-                  })
-                }
-                className="w-full justify-center sm:w-auto"
-              >
-                <Pencil className="h-4 w-4 mr-1" />
-                编辑
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => setDeleteDialogOpen(true)}
-                className="w-full justify-center sm:w-auto"
-              >
-                <Trash2 className="h-4 w-4 mr-1" />
-                删除
-              </Button>
-            </div>
+                    {images.map((img, index) => (
+                      <DropdownMenuItem
+                        key={`download-${img.id}`}
+                        onClick={() =>
+                          void handleDownload(img.id, `P${index + 1}`)
+                        }
+                      >
+                        P{index + 1}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button
+                  onClick={() =>
+                    navigate(`/works/${work.id}`, {
+                      state: previewSource,
+                    })
+                  }
+                  className="w-full justify-center sm:w-auto"
+                >
+                  <Pencil className="h-4 w-4 mr-1" />
+                  编辑
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  className="w-full justify-center sm:w-auto"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  删除
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       )}
 
-      <Dialog
-        open={collectionDialogOpen}
-        onOpenChange={(open) => {
-          setCollectionDialogOpen(open);
-          if (!open) {
-            setCollectionError("");
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>加入作品集</DialogTitle>
-            <DialogDescription>
-              可多选作品集，已加入的作品集会自动勾选
-            </DialogDescription>
-          </DialogHeader>
+      {!publicMode && (
+        <Dialog
+          open={collectionDialogOpen}
+          onOpenChange={(open) => {
+            setCollectionDialogOpen(open);
+            if (!open) {
+              setCollectionError("");
+            }
+          }}
+        >
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>加入作品集</DialogTitle>
+              <DialogDescription>
+                可多选作品集，已加入的作品集会自动勾选
+              </DialogDescription>
+            </DialogHeader>
 
-          {collectionError && (
-            <div className="text-sm text-destructive">{collectionError}</div>
-          )}
-
-          <div className="max-h-72 overflow-y-auto rounded-md border border-border">
-            {collectionsLoading ? (
-              <div className="p-4 text-sm text-muted-foreground">加载中...</div>
-            ) : collections.length === 0 ? (
-              <div className="p-4 text-sm text-muted-foreground">
-                暂无可用作品集
-              </div>
-            ) : (
-              <div className="divide-y divide-border">
-                {collections.map((collection) => {
-                  const selected = selectedCollectionIds.includes(
-                    collection.id,
-                  );
-                  return (
-                    <button
-                      key={collection.id}
-                      type="button"
-                      onClick={() => handleToggleCollection(collection.id)}
-                      className={[
-                        "w-full px-3 py-2 text-left flex items-center justify-between",
-                        selected
-                          ? "bg-accent text-foreground"
-                          : "hover:bg-accent/60 text-foreground",
-                      ].join(" ")}
-                    >
-                      <div>
-                        <div className="text-sm font-medium">
-                          {collection.name}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {collection.work_count} 项作品
-                        </div>
-                      </div>
-                      {selected && <Check className="h-4 w-4 text-primary" />}
-                    </button>
-                  );
-                })}
-              </div>
+            {collectionError && (
+              <div className="text-sm text-destructive">{collectionError}</div>
             )}
-          </div>
 
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCollectionDialogOpen(false)}
-              disabled={addingToCollection}
-            >
-              取消
-            </Button>
-            <Button
-              onClick={handleAddToCollection}
-              disabled={
-                addingToCollection ||
-                collectionsLoading ||
-                collections.length === 0 ||
-                !hasCollectionSelectionChanged
-              }
-            >
-              {collectionDialogConfirmText}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <div className="max-h-72 overflow-y-auto rounded-md border border-border">
+              {collectionsLoading ? (
+                <div className="p-4 text-sm text-muted-foreground">
+                  加载中...
+                </div>
+              ) : collections.length === 0 ? (
+                <div className="p-4 text-sm text-muted-foreground">
+                  暂无可用作品集
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {collections.map((collection) => {
+                    const selected = selectedCollectionIds.includes(
+                      collection.id,
+                    );
+                    return (
+                      <button
+                        key={collection.id}
+                        type="button"
+                        onClick={() => handleToggleCollection(collection.id)}
+                        className={[
+                          "w-full px-3 py-2 text-left flex items-center justify-between",
+                          selected
+                            ? "bg-accent text-foreground"
+                            : "hover:bg-accent/60 text-foreground",
+                        ].join(" ")}
+                      >
+                        <div>
+                          <div className="text-sm font-medium">
+                            {collection.name}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {collection.work_count} 项作品
+                          </div>
+                        </div>
+                        {selected && <Check className="h-4 w-4 text-primary" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
-      <AlertDialog
-        open={deleteDialogOpen}
-        onOpenChange={(open) => {
-          if (!deleting) {
-            setDeleteDialogOpen(open);
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除作品？</AlertDialogTitle>
-            <AlertDialogDescription>
-              删除后将无法恢复该作品及其关联图片。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
-            <AlertDialogAction
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={deleting}
-            >
-              {deleting ? "删除中..." : "确认删除"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setCollectionDialogOpen(false)}
+                disabled={addingToCollection}
+              >
+                取消
+              </Button>
+              <Button
+                onClick={handleAddToCollection}
+                disabled={
+                  addingToCollection ||
+                  collectionsLoading ||
+                  collections.length === 0 ||
+                  !hasCollectionSelectionChanged
+                }
+              >
+                {collectionDialogConfirmText}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {!publicMode && (
+        <AlertDialog
+          open={deleteDialogOpen}
+          onOpenChange={(open) => {
+            if (!deleting) {
+              setDeleteDialogOpen(open);
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>确认删除作品？</AlertDialogTitle>
+              <AlertDialogDescription>
+                删除后将无法恢复该作品及其关联图片。
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+              <AlertDialogAction
+                variant="destructive"
+                onClick={handleDelete}
+                disabled={deleting}
+              >
+                {deleting ? "删除中..." : "确认删除"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
 
       {lightboxOpen && activeImage && (
         <div className="fixed inset-0 z-50 bg-black/80">
@@ -940,17 +970,19 @@ export function WorkPreviewPage() {
             >
               <FileSearch className="h-4 w-4" />
             </button>
-            <button
-              onClick={() =>
-                void handleDownload(activeImage.id, `P${lightboxIndex + 1}`)
-              }
-              className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="下载当前原图"
-              title="下载当前原图"
-              disabled={downloading}
-            >
-              <Download className="h-4 w-4" />
-            </button>
+            {!publicMode && (
+              <button
+                onClick={() =>
+                  void handleDownload(activeImage.id, `P${lightboxIndex + 1}`)
+                }
+                className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                aria-label="下载当前原图"
+                title="下载当前原图"
+                disabled={downloading}
+              >
+                <Download className="h-4 w-4" />
+              </button>
+            )}
             <button
               onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
               className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20"
@@ -1261,6 +1293,7 @@ export function WorkPreviewPage() {
                   path={activeDisplay.path}
                   alt={work?.title ?? ""}
                   variant={activeDisplay.variant}
+                  publicAccess={publicMode}
                   className="max-h-[90vh] max-w-[90vw] object-contain pointer-events-none select-none"
                 />
               )}

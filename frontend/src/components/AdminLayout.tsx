@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { useAuthStore, useSystemStore } from "@/stores";
 import { useTheme } from "@/components/ThemeProvider";
 import { Button } from "@/components/ui/button";
@@ -87,6 +87,8 @@ export function AdminLayout({
   const systemSettings = useSystemStore((state) => state.settings);
   const siteTitle = systemSettings?.site_title || "Illust Nest";
   const { theme, resolvedTheme, setTheme } = useTheme();
+  const location = useLocation();
+  const isPublicRoute = location.pathname.startsWith("/public/");
 
   useEffect(() => {
     localStorage.setItem("sidebar_collapsed", String(collapsed));
@@ -113,6 +115,27 @@ export function AdminLayout({
       <Sun className={size} />
     );
   };
+
+  if (isPublicRoute) {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <header className="border-b border-border bg-card">
+          <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
+            <Link to="/public/works" className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-md bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
+                IN
+              </div>
+              <span className="text-sm font-semibold">{siteTitle}</span>
+            </Link>
+            <div className="text-sm text-muted-foreground">{title}</div>
+          </div>
+        </header>
+        <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+          {children}
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground">
