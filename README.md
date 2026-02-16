@@ -121,11 +121,14 @@ magick -list format
 
 注：在类似树莓派的平台上，ImageMagick处理大图片可能有一定性能瓶颈，需要结合实际情况考虑使用。
 
-## 公开（匿名）访问接口
+## 公开（匿名）访问
 
-作品可以标记为“公开”，公开的作品可通过公开接口跳过鉴权匿名访问，用于嵌入博客或外部平台。
+当系统设置中勾选“启用公开展示”时，可访问公开作品页面`/public/works`，展示标记为“公开”的作品。此外公开的作品还可以通过下列公开接口跳过鉴权匿名访问，可用于嵌入博客或外部平台。
 
+- 标签列表：`GET /api/public/tags`
 - 作品列表：`GET /api/public/works`
 - 作品详情：`GET /api/public/works/:id`
+- 作品图片EXIF：`GET /api/public/works/:id/images/:imageId/exif`
 - 作品原图：`GET /api/public/images/originals/*filepath`
+- 作品转码图：`GET /api/public/images/transcoded/*filepath`
 - 作品缩略图：`GET /api/public/images/thumbnails/*filepath`
