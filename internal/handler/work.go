@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"context"
 	"encoding/json"
+	"errors"
 	"illust-nest/internal/service"
 	"io"
 	"path/filepath"
@@ -211,7 +212,7 @@ func (h *WorkHandler) Update(c *gin.Context) {
 
 	work, err := h.workService.UpdateWork(uint(id), &req)
 	if err != nil {
-		if err.Error() == "work not found" {
+		if errors.Is(err, service.ErrWorkNotFound) {
 			NotFound(c)
 		} else {
 			InternalErrorWithMessage(c, err.Error())
@@ -231,7 +232,7 @@ func (h *WorkHandler) Delete(c *gin.Context) {
 	}
 
 	if err := h.workService.DeleteWork(uint(id)); err != nil {
-		if err.Error() == "work not found" {
+		if errors.Is(err, service.ErrWorkNotFound) {
 			NotFound(c)
 		} else {
 			InternalError(c)
@@ -329,12 +330,11 @@ func (h *WorkHandler) GetImageEXIF(c *gin.Context) {
 
 	info, err := h.workService.GetImageEXIF(uint(id), uint(imageID))
 	if err != nil {
-		msg := strings.ToLower(strings.TrimSpace(err.Error()))
-		if strings.Contains(msg, "not found") {
+		if errors.Is(err, service.ErrImageNotFound) {
 			NotFound(c)
 			return
 		}
-		if strings.Contains(msg, "only supports jpg/tiff") {
+		if errors.Is(err, service.ErrEXIFUnsupportedSourceType) {
 			BadRequest(c, err.Error())
 			return
 		}
@@ -495,7 +495,7 @@ func (h *WorkHandler) DeleteImage(c *gin.Context) {
 	}
 
 	if err := h.workService.DeleteImage(uint(id), uint(imageID)); err != nil {
-		if err.Error() == "work not found" || err.Error() == "cannot delete the last image" {
+		if errors.Is(err, service.ErrWorkNotFound) || errors.Is(err, service.ErrCannotDeleteLastImage) {
 			BadRequest(c, err.Error())
 		} else {
 			InternalError(c)
@@ -558,12 +558,11 @@ func (h *WorkHandler) UpdateImageAIMetadata(c *gin.Context) {
 	}
 
 	if err := h.workService.UpdateImageAIMetadata(uint(id), uint(imageID), req.AIMetadata); err != nil {
-		msg := strings.ToLower(strings.TrimSpace(err.Error()))
-		if strings.Contains(msg, "not found") {
+		if errors.Is(err, service.ErrImageNotFound) {
 			NotFound(c)
 			return
 		}
-		if strings.Contains(msg, "checkpoint and prompt are required") {
+		if errors.Is(err, service.ErrAIMetadataRequiredFields) {
 			BadRequest(c, err.Error())
 			return
 		}
@@ -643,8 +642,8 @@ func (h *WorkHandler) ExportImages(c *gin.Context) {
 		return
 	}
 	for _, record := range records {
-		cleanPath := filepath.ToSlash(filepath.Clean(record.Path))
-		if cleanPath == "." || cleanPath == "" || strings.HasPrefix(cleanPath, "..") || strings.Contains(cleanPath, "/../") {
+		cleanPath, err := service.NormalizeLogicalUploadPath(record.Path)
+		if err != nil {
 			continue
 		}
 		if _, exists := added[cleanPath]; exists {

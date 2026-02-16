@@ -338,6 +338,10 @@ func normalizeLogicalUploadPath(logicalPath string) (string, error) {
 	return cleaned, nil
 }
 
+func NormalizeLogicalUploadPath(logicalPath string) (string, error) {
+	return normalizeLogicalUploadPath(logicalPath)
+}
+
 type localStorageProvider struct {
 	baseDir string
 }

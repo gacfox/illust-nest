@@ -6,6 +6,7 @@ import (
 	"errors"
 	"illust-nest/internal/model"
 	"illust-nest/internal/repository"
+	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -82,7 +83,7 @@ func (s *WorkService) GetWorks(params *WorkListParams) (*WorkPagedResult, error)
 func (s *WorkService) GetWorkByID(id uint) (*WorkInfo, error) {
 	work, err := s.workRepo.FindByID(id, true)
 	if err != nil {
-		return nil, errors.New("work not found")
+		return nil, ErrWorkNotFound
 	}
 	return s.workToInfo(work, true), nil
 }
@@ -96,7 +97,7 @@ func (s *WorkService) GetPublicWorks(params *WorkListParams) (*WorkPagedResult, 
 func (s *WorkService) GetPublicWorkByID(id uint) (*WorkInfo, error) {
 	work, err := s.workRepo.FindByID(id, true)
 	if err != nil || !work.IsPublic {
-		return nil, errors.New("work not found")
+		return nil, ErrWorkNotFound
 	}
 	return s.workToInfo(work, true), nil
 }
@@ -107,7 +108,7 @@ func (s *WorkService) IsPublicImagePath(path string, isThumbnail bool) (bool, er
 
 func (s *WorkService) CreateWork(req *CreateWorkRequest, uploadedImages []*UploadedImage) (*WorkInfo, error) {
 	if len(uploadedImages) == 0 {
-		return nil, errors.New("at least one image is required")
+		return nil, ErrAtLeastOneImageRequired
 	}
 
 	work := &model.Work{
@@ -154,7 +155,7 @@ func (s *WorkService) CreateWork(req *CreateWorkRequest, uploadedImages []*Uploa
 func (s *WorkService) UpdateWork(id uint, req *UpdateWorkRequest) (*WorkInfo, error) {
 	work, err := s.workRepo.FindByID(id, false)
 	if err != nil {
-		return nil, errors.New("work not found")
+		return nil, ErrWorkNotFound
 	}
 
 	if req.Title != "" {
@@ -190,7 +191,7 @@ func (s *WorkService) UpdateWork(id uint, req *UpdateWorkRequest) (*WorkInfo, er
 func (s *WorkService) DeleteWork(id uint) error {
 	work, err := s.workRepo.FindByID(id, true)
 	if err != nil {
-		return errors.New("work not found")
+		return ErrWorkNotFound
 	}
 
 	for _, img := range work.Images {
@@ -226,7 +227,7 @@ func (s *WorkService) AddImages(workID uint, uploadedImages []*UploadedImage) ([
 	}
 
 	if existingCount+int64(len(uploadedImages)) == 0 {
-		return nil, errors.New("work must have at least one image")
+		return nil, ErrWorkMustHaveAtLeastOne
 	}
 
 	var images []model.WorkImage
@@ -277,7 +278,7 @@ func (s *WorkService) DeleteImage(workID, imageID uint) error {
 	}
 
 	if imageCount <= 1 {
-		return errors.New("cannot delete the last image")
+		return ErrCannotDeleteLastImage
 	}
 
 	image, err := s.workRepo.FindFirstOrDefaultImage(workID)
@@ -303,7 +304,7 @@ func (s *WorkService) UpdateImageAIMetadata(workID, imageID uint, metadata *AIIm
 	}
 	if err := s.workRepo.UpdateImageAIMetadata(workID, imageID, metadataJSON); err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return errors.New("image not found")
+			return ErrImageNotFound
 		}
 		return err
 	}
@@ -448,7 +449,7 @@ func normalizeAndMarshalAIMetadata(metadata *AIImageMetadata) (string, error) {
 	checkpoint := strings.TrimSpace(metadata.Checkpoint)
 	prompt := strings.TrimSpace(metadata.Prompt)
 	if checkpoint == "" || prompt == "" {
-		return "", errors.New("AI metadata checkpoint and prompt are required")
+		return "", ErrAIMetadataRequiredFields
 	}
 
 	normalized := AIImageMetadata{
@@ -552,12 +553,12 @@ func (s *WorkService) CheckDuplicateImages(hashes []string, excludeWorkID *uint)
 func (s *WorkService) GetImageEXIF(workID, imageID uint) (*ImageEXIFInfo, error) {
 	image, err := s.workRepo.FindImageByID(workID, imageID)
 	if err != nil {
-		return nil, errors.New("image not found")
+		return nil, ErrImageNotFound
 	}
 
 	ext := strings.ToLower(filepath.Ext(image.StoragePath))
 	if !isEXIFSupportedSourceExt(ext) {
-		return nil, errors.New("EXIF only supports JPG/TIFF source images")
+		return nil, ErrEXIFUnsupportedSourceType
 	}
 
 	storage, err := GetStorageProvider()
@@ -567,6 +568,9 @@ func (s *WorkService) GetImageEXIF(workID, imageID uint) (*ImageEXIFInfo, error)
 
 	file, _, err := storage.Get(context.Background(), image.StoragePath)
 	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil, ErrImageNotFound
+		}
 		return nil, err
 	}
 	defer file.Close()
