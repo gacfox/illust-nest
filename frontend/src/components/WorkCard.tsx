@@ -45,6 +45,7 @@ export function WorkCard({
               path={work.cover_image.thumbnail_path}
               alt={work.title}
               className="w-full h-55 object-cover"
+              lazy
             />
           </button>
         ) : (

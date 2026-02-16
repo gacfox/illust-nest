@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { imageService } from "@/services";
 
 type AuthImageProps = {
@@ -6,6 +6,7 @@ type AuthImageProps = {
   alt: string;
   className?: string;
   variant?: "thumbnail" | "original" | "transcoded";
+  lazy?: boolean;
 };
 
 export function AuthImage({
@@ -13,10 +14,46 @@ export function AuthImage({
   alt,
   className,
   variant = "thumbnail",
+  lazy = false,
 }: AuthImageProps) {
   const [src, setSrc] = useState<string>("");
+  const [shouldLoad, setShouldLoad] = useState<boolean>(!lazy);
+  const placeholderRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    setShouldLoad(!lazy);
+  }, [path, variant, lazy]);
+
+  useEffect(() => {
+    if (!lazy) {
+      return;
+    }
+    const el = placeholderRef.current;
+    if (!el) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            setShouldLoad(true);
+            observer.disconnect();
+            return;
+          }
+        }
+      },
+      { rootMargin: "120px" },
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [lazy, path, variant]);
+
+  useEffect(() => {
+    if (!shouldLoad) {
+      return;
+    }
     let revoked = false;
     let objectUrl = "";
 
@@ -45,11 +82,12 @@ export function AuthImage({
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [path, variant]);
+  }, [path, variant, shouldLoad]);
 
   if (!src) {
     return (
       <div
+        ref={placeholderRef}
         className={[
           "bg-muted flex items-center justify-center text-xs text-muted-foreground",
           className,
@@ -57,10 +95,17 @@ export function AuthImage({
           .filter(Boolean)
           .join(" ")}
       >
-        加载中
+        {shouldLoad ? "加载中" : "待加载"}
       </div>
     );
   }
 
-  return <img src={src} alt={alt} className={className} />;
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className={className}
+      loading={lazy ? "lazy" : undefined}
+    />
+  );
 }
