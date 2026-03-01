@@ -11,7 +11,7 @@
 - 公开作品展示：支持配置开关，默认关闭，开启后可匿名访问`/public/works`查看公开作品
 - 批量操作：支持批量删除、批量设为公开或私密
 - 作品检索：支持按关键字、标签、评分筛选，按时间或评分排序
-- 图片格式支持：PNG / JPG / GIF / WebP / BMP / TIFF
+- 图片格式支持：PNG（APNG） / JPG / GIF / WebP / BMP / TIFF
 - 扩展图片格式支持（通过ImageMagick）：PSD / AI（依赖`ghostscript`） / HEIC及HEIF（依赖`libheif`） / AVIF（依赖`libavif`）
 - 作品集管理：将作品整合为作品集维度管理
 - 标签管理：支持标签管理和为作品附加标签
