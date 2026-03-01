@@ -33,6 +33,8 @@
 
 ## 快速开始（开发）
 
+开发模式下，前端使用 Vite dev server，后端只提供 API 服务。
+
 ### 1) 启动前端
 
 ```bash
@@ -44,28 +46,30 @@ cd frontend && npm install && npm run dev
 ### 2) 启动服务端
 
 ```bash
-go build -o ./bin/main ./cmd/server/ && ./bin/main
+go build -tags debug -o ./bin/illust-nest ./cmd/server/ && ./bin/illust-nest
 ```
 
 默认服务端地址为`http://localhost:8080`。
 
-## 构建与部署
+## 生产构建与部署
 
-### 1) 构建前端
+生产构建采用前端资源嵌入二进制可执行文件方式。
 
 ```bash
+# 1. 构建前端
 cd frontend && npm install && npm run build
+
+# 2. 复制前端产物到 embed 目录
+cp -r frontend/dist/* internal/web/dist/
+
+# 3. 构建后端
+go build -o ./bin/illust-nest ./cmd/server/
+
+# 4. 启动服务
+GIN_MODE=release && ./bin/illust-nest
 ```
 
-产物位于`frontend/dist`文件夹中。
-
-### 2) 启动服务端
-
-```bash
-GIN_MODE=release go build -o ./bin/main ./cmd/server/ && ./bin/main
-```
-
-部署模式下，服务端会直接提供前端静态资源，并自动处理SPA路由回退，访问`8080`即可打开页面。
+部署模式下，前端静态文件已嵌入到二进制文件中，服务端会自动处理SPA路由回退，访问`8080`即可打开页面。
 
 ## 配置说明
 
@@ -108,7 +112,8 @@ storage:
       webdav_prefix: "illust-nest"
 
 web:
-  static_dir: ./frontend/dist # 静态资源文件夹的路径，部署时需要指定为Vite编译产物的目录
+  static_dir: ./frontend/dist # 静态资源文件夹的路径（embed=false时使用）
+  embed: true # 是否将前端嵌入到二进制文件中，嵌入后static_dir就不再生效了，生产部署一般用这种方式
 ```
 
 ## ImageMagick集成

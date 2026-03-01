@@ -8,6 +8,7 @@ import (
 	"illust-nest/internal/middleware"
 	"illust-nest/internal/repository"
 	"illust-nest/internal/service"
+	"illust-nest/internal/web"
 	"io"
 	"mime"
 	"net/http"
@@ -237,9 +238,24 @@ func serveImage(c *gin.Context, logicalPrefix, rawPath string) {
 	_, _ = io.Copy(c.Writer, file)
 }
 
+var embedHandler *web.EmbedHandler
+
 func serveFrontend(c *gin.Context) {
 	if strings.HasPrefix(c.Request.URL.Path, "/api/") {
 		handler.NotFound(c)
+		return
+	}
+
+	if config.GlobalConfig.Web.Embed {
+		if embedHandler == nil {
+			var err error
+			embedHandler, err = web.NewEmbedHandler()
+			if err != nil {
+				c.String(http.StatusInternalServerError, "failed to initialize embed handler: %v", err)
+				return
+			}
+		}
+		embedHandler.Serve(c)
 		return
 	}
 

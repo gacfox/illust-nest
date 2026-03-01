@@ -34,9 +34,9 @@ data/uploads/*.webp
 Thumbs.db
 
 # Frontend
-web/
 frontend/node_modules/
 frontend/dist/
+internal/web/dist/
 
 # AI
 AGENTS*.md

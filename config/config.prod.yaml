@@ -37,3 +37,4 @@ storage:
 
 web:
   static_dir: ./frontend/dist
+  embed: true

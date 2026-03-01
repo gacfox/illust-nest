@@ -32,6 +32,7 @@ type JWTConfig struct {
 
 type WebConfig struct {
 	StaticDir string `yaml:"static_dir"`
+	Embed     bool   `yaml:"embed"`
 }
 
 type StorageConfig struct {
