@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	MaxUploadFileSizeMB    int64 = 20
+	MaxUploadFileSizeMB    int64 = 50
 	MaxUploadFileSizeBytes       = MaxUploadFileSizeMB * 1024 * 1024
 	thumbnailMaxWidth            = 400
 	thumbnailQuality             = 85

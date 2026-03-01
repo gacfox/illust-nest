@@ -161,7 +161,7 @@ func (h *WorkHandler) Create(c *gin.Context) {
 
 	for _, file := range files {
 		if file.Size > service.MaxUploadFileSizeBytes {
-			BadRequest(c, "file size exceeds 20MB")
+			BadRequest(c, "文件大小不能超过50MB")
 			return
 		}
 	}
@@ -447,6 +447,12 @@ func (h *WorkHandler) AddImages(c *gin.Context) {
 	if len(files) == 0 {
 		BadRequest(c, "at least one image is required")
 		return
+	}
+	for _, file := range files {
+		if file.Size > service.MaxUploadFileSizeBytes {
+			BadRequest(c, "文件大小不能超过50MB")
+			return
+		}
 	}
 
 	uploadedImages, err := h.imageService.UploadImages(files)
