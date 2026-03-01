@@ -20,11 +20,11 @@ func NewAuthService(userRepo *repository.UserRepository) *AuthService {
 func (s *AuthService) Login(req *LoginRequest) (*LoginResponse, error) {
 	user, err := s.userRepo.FindByUsername(req.Username)
 	if err != nil {
-		return nil, errors.New("invalid username or password")
+		return nil, errors.New("用户名或密码错误")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
-		return nil, errors.New("invalid username or password")
+		return nil, errors.New("用户名或密码错误")
 	}
 
 	token, expiresAt, err := middleware.GenerateToken(user.ID, user.Username)
