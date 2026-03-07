@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -121,6 +122,7 @@ export function WorkPreviewPage({
 }: {
   publicMode?: boolean;
 }) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -179,13 +181,13 @@ export function WorkPreviewPage({
           setWork(res.data.data as WorkDetail);
         }
       } catch (err) {
-        console.error("加载作品失败", err);
+        console.error(t("works.loadFailed"), err);
       } finally {
         setLoading(false);
       }
     };
     load();
-  }, [workId, navigate, publicMode]);
+  }, [workId, navigate, publicMode, t]);
 
   const handleLogout = () => {
     clearAuth();
@@ -201,7 +203,7 @@ export function WorkPreviewPage({
       setDeleteDialogOpen(false);
       navigate("/");
     } catch (err) {
-      console.error("删除失败", err);
+      console.error(t("works.deleteFailed"), err);
     } finally {
       setDeleting(false);
     }
@@ -222,7 +224,7 @@ export function WorkPreviewPage({
 
       if (treeRes.data.code !== 0) {
         setCollections([]);
-        setCollectionError(treeRes.data.message || "加载作品集失败");
+        setCollectionError(treeRes.data.message || t("collections.loadFailed"));
         return;
       }
 
@@ -240,9 +242,9 @@ export function WorkPreviewPage({
         setInitialSelectedCollectionIds([]);
       }
     } catch (error) {
-      console.error("加载作品集失败", error);
+      console.error(t("collections.loadFailed"), error);
       setCollections([]);
-      setCollectionError("加载作品集失败");
+      setCollectionError(t("collections.loadFailed"));
     } finally {
       setCollectionsLoading(false);
     }
@@ -277,7 +279,9 @@ export function WorkPreviewPage({
         collection_ids: selectedCollectionIds,
       });
       if (response.data.code !== 0) {
-        setCollectionError(response.data.message || "更新作品集失败");
+        setCollectionError(
+          response.data.message || t("preview.updateCollectionsFailed"),
+        );
         return;
       }
 
@@ -286,12 +290,15 @@ export function WorkPreviewPage({
       const removedCount = toRemove.length;
       if (addedCount > 0 && removedCount > 0) {
         toast.success(
-          `已更新作品集（新增 ${addedCount}，移除 ${removedCount}）`,
+          t("preview.collectionsUpdatedBoth", {
+            added: addedCount,
+            removed: removedCount,
+          }),
         );
       } else if (addedCount > 0) {
-        toast.success(`已新增到 ${addedCount} 个作品集`);
+        toast.success(t("preview.collectionsAdded", { count: addedCount }));
       } else {
-        toast.success(`已从 ${removedCount} 个作品集中移除`);
+        toast.success(t("preview.collectionsRemoved", { count: removedCount }));
       }
     } catch (error: unknown) {
       const message =
@@ -302,7 +309,7 @@ export function WorkPreviewPage({
           .response?.data?.message === "string"
           ? (error as { response?: { data?: { message?: string } } }).response!
               .data!.message!
-          : "更新作品集失败";
+          : t("preview.updateCollectionsFailed");
       setCollectionError(message);
     } finally {
       setAddingToCollection(false);
@@ -326,7 +333,9 @@ export function WorkPreviewPage({
     );
   };
 
-  const collectionDialogConfirmText = addingToCollection ? "保存中..." : "保存";
+  const collectionDialogConfirmText = addingToCollection
+    ? t("common.saving")
+    : t("common.save");
 
   const images = useMemo(() => work?.images ?? [], [work]);
   const visibleImages = showAll ? images : images.slice(0, 1);
@@ -348,7 +357,7 @@ export function WorkPreviewPage({
     typeof previewSource?.collectionName === "string" &&
     previewSource.collectionName.trim() !== ""
       ? previewSource.collectionName
-      : "作品集";
+      : t("collections.title").replace("管理", "");
   const publicImageLinks = useMemo(() => {
     const origin = typeof window !== "undefined" ? window.location.origin : "";
     return images
@@ -420,10 +429,10 @@ export function WorkPreviewPage({
           ? `${work?.title || "work"}-${label || "image"}.bin`
           : `${work?.title || "work"}-originals.zip`);
       saveBlob(res.data, filename);
-      toast.success("下载已开始");
+      toast.success(t("preview.downloadStarted"));
     } catch (err) {
-      console.error("下载失败", err);
-      toast.error("下载失败");
+      console.error(t("preview.downloadFailed"), err);
+      toast.error(t("preview.downloadFailed"));
     } finally {
       setDownloading(false);
     }
@@ -432,7 +441,7 @@ export function WorkPreviewPage({
   const handleOpenExifPanel = async () => {
     if (!workId || !activeImage) return;
     if (!activeImageSupportsExif) {
-      toast.error("仅 JPG/TIFF 源图支持 EXIF");
+      toast.error(t("preview.exifOnlyJpgTiff"));
       return;
     }
 
@@ -452,7 +461,7 @@ export function WorkPreviewPage({
         ? await workService.getPublicImageExif(workId, activeImage.id)
         : await workService.getImageExif(workId, activeImage.id);
       if (res.data.code !== 0) {
-        setExifError(res.data.message || "加载 EXIF 失败");
+        setExifError(res.data.message || t("preview.exifLoadFailed"));
         setActiveExif(null);
         return;
       }
@@ -460,8 +469,8 @@ export function WorkPreviewPage({
       setActiveExif(info);
       setExifCache((prev) => ({ ...prev, [activeImage.id]: info }));
     } catch (err) {
-      console.error("加载 EXIF 失败", err);
-      setExifError("加载 EXIF 失败");
+      console.error(t("preview.exifLoadFailed"), err);
+      setExifError(t("preview.exifLoadFailed"));
       setActiveExif(null);
     } finally {
       setExifLoading(false);
@@ -581,11 +590,11 @@ export function WorkPreviewPage({
 
   return (
     <AdminLayout
-      title="作品预览"
+      title={t("preview.title")}
       breadcrumbs={
         isFromCollection
           ? [
-              { label: "作品集管理", href: "/collections" },
+              { label: t("collections.title"), href: "/collections" },
               {
                 label: collectionNameFromSource,
                 href:
@@ -594,19 +603,23 @@ export function WorkPreviewPage({
                     ? `/collections/${previewSource.collectionId}/works`
                     : "/collections",
               },
-              { label: work?.title || "作品预览" },
+              { label: work?.title || t("preview.title") },
             ]
           : [
-              { label: "作品管理", href: "/" },
-              { label: work?.title || "作品预览" },
+              { label: t("works.title"), href: "/" },
+              { label: work?.title || t("preview.title") },
             ]
       }
       onLogout={publicMode ? undefined : handleLogout}
     >
       {loading ? (
-        <div className="text-center text-muted-foreground">加载中...</div>
+        <div className="text-center text-muted-foreground">
+          {t("app.loading")}
+        </div>
       ) : !work ? (
-        <div className="text-center text-muted-foreground">作品不存在</div>
+        <div className="text-center text-muted-foreground">
+          {t("works.workNotFound")}
+        </div>
       ) : (
         <div className="space-y-6">
           <div className="space-y-4">
@@ -640,7 +653,7 @@ export function WorkPreviewPage({
                             onClick={() => setShowAll(true)}
                             className="bg-black/60 text-white hover:bg-black/70"
                           >
-                            查看全部
+                            {t("preview.viewAll")}
                           </Button>
                         </div>
                       )}
@@ -650,7 +663,7 @@ export function WorkPreviewPage({
               })
             ) : (
               <div className="bg-card border border-border rounded-lg p-6 text-center text-muted-foreground">
-                无图片
+                {t("preview.noImages")}
               </div>
             )}
           </div>
@@ -667,7 +680,9 @@ export function WorkPreviewPage({
                   </ReactMarkdown>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground mt-2">无描述</p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {t("common.noDescription")}
+                </p>
               )}
             </div>
 
@@ -679,14 +694,16 @@ export function WorkPreviewPage({
                   </Badge>
                 ))
               ) : (
-                <span className="text-xs text-muted-foreground">无标签</span>
+                <span className="text-xs text-muted-foreground">
+                  {t("preview.noTags")}
+                </span>
               )}
             </div>
 
             {work.is_public && publicImageLinks.length > 0 && (
               <div className="space-y-2">
                 <div className="text-sm text-muted-foreground">
-                  图片链接（公开）
+                  {t("preview.publicLinks")}
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {publicImageLinks.map((link, index) => (
@@ -696,11 +713,13 @@ export function WorkPreviewPage({
                       className="cursor-pointer select-none"
                       onClick={async () => {
                         await writeToClipboard(link);
-                        toast.success(`已复制图片链接 ${index + 1}`);
+                        toast.success(
+                          t("preview.linkCopied", { index: index + 1 }),
+                        );
                       }}
                     >
                       <Link2 className="h-3.5 w-3.5 mr-1" />
-                      复制链接 P{index + 1}
+                      {t("preview.copyLink")} P{index + 1}
                     </Badge>
                   ))}
                   {publicImageLinks.length > 1 && (
@@ -710,12 +729,14 @@ export function WorkPreviewPage({
                       onClick={async () => {
                         await writeToClipboard(publicImageLinks.join("\n"));
                         toast.success(
-                          `已复制全部链接（${publicImageLinks.length} 条）`,
+                          t("preview.allLinksCopied", {
+                            count: publicImageLinks.length,
+                          }),
                         );
                       }}
                     >
                       <Copy className="h-3.5 w-3.5 mr-1" />
-                      复制全部
+                      {t("preview.copyAll")}
                     </Badge>
                   )}
                 </div>
@@ -724,7 +745,9 @@ export function WorkPreviewPage({
 
             <div className="space-y-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
-                <span className="text-foreground">评分</span>
+                <span className="text-foreground">
+                  {t("works.fields.rating")}
+                </span>
                 <div className="flex items-center gap-1">
                   {Array.from({ length: 5 }).map((_, index) => (
                     <Star
@@ -740,7 +763,9 @@ export function WorkPreviewPage({
                 </div>
                 <span className="text-xs">({work.rating}/5)</span>
               </div>
-              <div>创建时间：{formatDateTime(work.created_at)}</div>
+              <div>
+                {t("preview.createdAt")}: {formatDateTime(work.created_at)}
+              </div>
             </div>
 
             {publicMode && (
@@ -751,7 +776,7 @@ export function WorkPreviewPage({
                   className="w-full justify-center sm:w-auto"
                 >
                   <ChevronLeft className="h-4 w-4 mr-1" />
-                  返回公开作品
+                  {t("preview.returnToPublic")}
                 </Button>
               </div>
             )}
@@ -764,7 +789,7 @@ export function WorkPreviewPage({
                   className="w-full justify-center sm:w-auto"
                 >
                   <FolderPlus className="h-4 w-4 mr-1" />
-                  作品集
+                  {t("collections.title").replace("管理", "")}
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -774,12 +799,14 @@ export function WorkPreviewPage({
                       className="w-full justify-center sm:w-auto"
                     >
                       <Download className="h-4 w-4 mr-1" />
-                      {downloading ? "下载中..." : "下载"}
+                      {downloading
+                        ? t("preview.downloading")
+                        : t("preview.download")}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="start">
                     <DropdownMenuItem onClick={() => void handleDownload()}>
-                      全部
+                      {t("preview.downloadAll")}
                     </DropdownMenuItem>
                     {images.map((img, index) => (
                       <DropdownMenuItem
@@ -802,7 +829,7 @@ export function WorkPreviewPage({
                   className="w-full justify-center sm:w-auto"
                 >
                   <Pencil className="h-4 w-4 mr-1" />
-                  编辑
+                  {t("common.edit")}
                 </Button>
                 <Button
                   variant="destructive"
@@ -810,7 +837,7 @@ export function WorkPreviewPage({
                   className="w-full justify-center sm:w-auto"
                 >
                   <Trash2 className="h-4 w-4 mr-1" />
-                  删除
+                  {t("common.delete")}
                 </Button>
               </div>
             )}
@@ -830,9 +857,9 @@ export function WorkPreviewPage({
         >
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>加入作品集</DialogTitle>
+              <DialogTitle>{t("preview.addToCollections")}</DialogTitle>
               <DialogDescription>
-                可多选作品集，已加入的作品集会自动勾选
+                {t("preview.addToCollectionsDescription")}
               </DialogDescription>
             </DialogHeader>
 
@@ -843,11 +870,11 @@ export function WorkPreviewPage({
             <div className="max-h-72 overflow-y-auto rounded-md border border-border">
               {collectionsLoading ? (
                 <div className="p-4 text-sm text-muted-foreground">
-                  加载中...
+                  {t("app.loading")}
                 </div>
               ) : collections.length === 0 ? (
                 <div className="p-4 text-sm text-muted-foreground">
-                  暂无可用作品集
+                  {t("preview.noCollections")}
                 </div>
               ) : (
                 <div className="divide-y divide-border">
@@ -872,7 +899,9 @@ export function WorkPreviewPage({
                             {collection.name}
                           </div>
                           <div className="text-xs text-muted-foreground">
-                            {collection.work_count} 项作品
+                            {t("preview.workCount", {
+                              count: collection.work_count,
+                            })}
                           </div>
                         </div>
                         {selected && <Check className="h-4 w-4 text-primary" />}
@@ -889,7 +918,7 @@ export function WorkPreviewPage({
                 onClick={() => setCollectionDialogOpen(false)}
                 disabled={addingToCollection}
               >
-                取消
+                {t("common.cancel")}
               </Button>
               <Button
                 onClick={handleAddToCollection}
@@ -918,19 +947,21 @@ export function WorkPreviewPage({
         >
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>确认删除作品？</AlertDialogTitle>
+              <AlertDialogTitle>{t("preview.confirmDelete")}</AlertDialogTitle>
               <AlertDialogDescription>
-                删除后将无法恢复该作品及其关联图片。
+                {t("preview.confirmDeleteDescription")}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+              <AlertDialogCancel disabled={deleting}>
+                {t("common.cancel")}
+              </AlertDialogCancel>
               <AlertDialogAction
                 variant="destructive"
                 onClick={handleDelete}
                 disabled={deleting}
               >
-                {deleting ? "删除中..." : "确认删除"}
+                {deleting ? t("common.deleting") : t("common.confirmDelete")}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
@@ -949,10 +980,12 @@ export function WorkPreviewPage({
                 setExifPanelOpen(false);
               }}
               className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="查看AI元数据"
+              aria-label={t("ariaLabels.viewAIMetadata")}
               disabled={!activeAIMetadata}
               title={
-                activeAIMetadata ? "查看 AI 元数据" : "当前图片无 AI 元数据"
+                activeAIMetadata
+                  ? t("ariaLabels.viewAIMetadata")
+                  : t("lightbox.noAIMetadata")
               }
             >
               <Sparkles className="h-4 w-4" />
@@ -960,12 +993,12 @@ export function WorkPreviewPage({
             <button
               onClick={() => void handleOpenExifPanel()}
               className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
-              aria-label="查看EXIF"
+              aria-label={t("ariaLabels.viewExif")}
               disabled={!activeImageSupportsExif}
               title={
                 activeImageSupportsExif
-                  ? "查看 EXIF"
-                  : "仅 JPG/TIFF 源图支持 EXIF"
+                  ? t("ariaLabels.viewExif")
+                  : t("lightbox.exifOnlyJpgTiff")
               }
             >
               <FileSearch className="h-4 w-4" />
@@ -976,8 +1009,8 @@ export function WorkPreviewPage({
                   void handleDownload(activeImage.id, `P${lightboxIndex + 1}`)
                 }
                 className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20 disabled:opacity-40 disabled:cursor-not-allowed"
-                aria-label="下载当前原图"
-                title="下载当前原图"
+                aria-label={t("ariaLabels.downloadOriginal")}
+                title={t("ariaLabels.downloadOriginal")}
                 disabled={downloading}
               >
                 <Download className="h-4 w-4" />
@@ -986,28 +1019,28 @@ export function WorkPreviewPage({
             <button
               onClick={() => setZoom((z) => Math.min(3, z + 0.25))}
               className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20"
-              aria-label="放大"
+              aria-label={t("lightbox.zoomIn")}
             >
               <ZoomIn className="h-4 w-4" />
             </button>
             <button
               onClick={() => setZoom((z) => Math.max(1, z - 0.25))}
               className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20"
-              aria-label="缩小"
+              aria-label={t("lightbox.zoomOut")}
             >
               <ZoomOut className="h-4 w-4" />
             </button>
             <button
               onClick={resetTransform}
               className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20"
-              aria-label="还原"
+              aria-label={t("lightbox.reset")}
             >
               <RotateCcw className="h-4 w-4" />
             </button>
             <button
               onClick={closeLightbox}
               className="p-2 bg-white/10 text-white rounded-md hover:bg-white/20"
-              aria-label="关闭"
+              aria-label={t("common.close")}
             >
               <X className="h-4 w-4" />
             </button>
@@ -1016,11 +1049,13 @@ export function WorkPreviewPage({
           {aiMetadataPanelOpen && activeAIMetadata && (
             <div className="absolute top-16 right-4 z-20 w-115 max-w-[calc(100vw-2rem)] rounded-md border border-white/20 bg-black/80 p-3 text-white shadow-lg">
               <div className="mb-3 flex items-center justify-between gap-2">
-                <div className="text-sm font-medium">AI 元数据</div>
+                <div className="text-sm font-medium">
+                  {t("lightbox.aiMetadata")}
+                </div>
                 <button
                   onClick={() => setAIMetadataPanelOpen(false)}
                   className="rounded p-1 text-white/80 hover:bg-white/10 hover:text-white"
-                  aria-label="关闭AI元数据面板"
+                  aria-label={t("ariaLabels.closeAIMetadataPanel")}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -1047,10 +1082,10 @@ export function WorkPreviewPage({
                       className="text-white/80 hover:bg-white/10 hover:text-white"
                       onClick={async () => {
                         await writeToClipboard(activeAIMetadata.prompt);
-                        toast.success("已复制 Prompt");
+                        toast.success(t("lightbox.promptCopied"));
                       }}
-                      aria-label="复制 Prompt"
-                      title="复制 Prompt"
+                      aria-label={t("ariaLabels.copyPrompt")}
+                      title={t("ariaLabels.copyPrompt")}
                     >
                       <Copy className="h-3 w-3" />
                     </Button>
@@ -1074,10 +1109,10 @@ export function WorkPreviewPage({
                           await writeToClipboard(
                             activeAIMetadata.negative_prompt || "",
                           );
-                          toast.success("已复制 Negative prompt");
+                          toast.success(t("lightbox.negativePromptCopied"));
                         }}
-                        aria-label="复制 Negative prompt"
-                        title="复制 Negative prompt"
+                        aria-label={t("ariaLabels.copyNegativePrompt")}
+                        title={t("ariaLabels.copyNegativePrompt")}
                       >
                         <Copy className="h-3 w-3" />
                       </Button>
@@ -1118,24 +1153,24 @@ export function WorkPreviewPage({
           {exifPanelOpen && (
             <div className="absolute top-16 right-4 z-20 w-90 max-w-[calc(100vw-2rem)] rounded-md border border-white/20 bg-black/80 p-3 text-white shadow-lg">
               <div className="mb-2 flex items-center justify-between gap-2">
-                <div className="text-sm font-medium">EXIF 信息</div>
+                <div className="text-sm font-medium">{t("lightbox.exif")}</div>
                 <button
                   onClick={() => setExifPanelOpen(false)}
                   className="rounded p-1 text-white/80 hover:bg-white/10 hover:text-white"
-                  aria-label="关闭EXIF面板"
+                  aria-label={t("ariaLabels.closeExifPanel")}
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
 
               {exifLoading ? (
-                <div className="text-xs text-white/80">加载中...</div>
+                <div className="text-xs text-white/80">{t("app.loading")}</div>
               ) : exifError ? (
                 <div className="text-xs text-red-300">{exifError}</div>
               ) : activeExif ? (
                 <div className="space-y-2">
                   <div className="text-[11px] text-white/70 break-all">
-                    文件：{activeExif.filename}（
+                    {t("lightbox.file")}: {activeExif.filename}（
                     {activeExif.format.toUpperCase()}）
                   </div>
                   {activeExif.has_exif && activeExif.fields.length > 0 ? (
@@ -1145,19 +1180,21 @@ export function WorkPreviewPage({
                           key={`${field.key}-${field.value}`}
                           className="text-xs"
                         >
-                          <span className="text-white/70">{field.key}：</span>
+                          <span className="text-white/70">{field.key}:</span>
                           <span className="break-all">{field.value}</span>
                         </div>
                       ))}
                     </div>
                   ) : (
                     <div className="text-xs text-white/80">
-                      未读取到 EXIF 信息
+                      {t("lightbox.noExif")}
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="text-xs text-white/80">暂无 EXIF 信息</div>
+                <div className="text-xs text-white/80">
+                  {t("lightbox.noExif")}
+                </div>
               )}
             </div>
           )}
@@ -1166,7 +1203,7 @@ export function WorkPreviewPage({
             onClick={goPrev}
             disabled={lightboxIndex === 0}
             className="absolute left-4 top-1/2 -translate-y-1/2 z-20 p-2 bg-white/10 text-white rounded-full hover:bg-white/20 disabled:opacity-40"
-            aria-label="上一张"
+            aria-label={t("lightbox.prev")}
           >
             <ChevronLeft className="h-5 w-5" />
           </button>
@@ -1174,7 +1211,7 @@ export function WorkPreviewPage({
             onClick={goNext}
             disabled={lightboxIndex === images.length - 1}
             className="absolute right-4 top-1/2 -translate-y-1/2 z-20 p-2 bg-white/10 text-white rounded-full hover:bg-white/20 disabled:opacity-40"
-            aria-label="下一张"
+            aria-label={t("lightbox.next")}
           >
             <ChevronRight className="h-5 w-5" />
           </button>

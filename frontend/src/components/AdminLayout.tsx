@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useAuthStore, useSystemStore } from "@/stores";
 import { useTheme } from "@/components/ThemeProvider";
 import { Button } from "@/components/ui/button";
@@ -40,15 +41,6 @@ type AdminLayoutProps = {
   onLogout?: () => void;
 };
 
-const navItems = [
-  { to: "/", label: "作品管理", icon: Images },
-  { to: "/works/export", label: "作品导出", icon: Download },
-  { to: "/collections", label: "作品集管理", icon: FolderKanban },
-  { to: "/tags", label: "标签管理", icon: Tags },
-  { to: "/statistics", label: "数据统计", icon: BarChart3 },
-  { to: "/settings", label: "系统设置", icon: Settings },
-];
-
 function Breadcrumbs({ items }: { items: BreadcrumbItem[] }) {
   return (
     <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -78,6 +70,7 @@ export function AdminLayout({
   headerAction,
   onLogout,
 }: AdminLayoutProps) {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(() => {
     const stored = localStorage.getItem("sidebar_collapsed");
     return stored === "true";
@@ -89,6 +82,15 @@ export function AdminLayout({
   const { theme, resolvedTheme, setTheme } = useTheme();
   const location = useLocation();
   const isPublicRoute = location.pathname.startsWith("/public/");
+
+  const navItems = [
+    { to: "/", label: t("nav.works"), icon: Images },
+    { to: "/works/export", label: t("nav.export"), icon: Download },
+    { to: "/collections", label: t("nav.collections"), icon: FolderKanban },
+    { to: "/tags", label: t("nav.tags"), icon: Tags },
+    { to: "/statistics", label: t("nav.statistics"), icon: BarChart3 },
+    { to: "/settings", label: t("nav.settings"), icon: Settings },
+  ];
 
   useEffect(() => {
     localStorage.setItem("sidebar_collapsed", String(collapsed));
@@ -144,7 +146,7 @@ export function AdminLayout({
           variant="ghost"
           size="icon"
           onClick={() => setMobileOpen(true)}
-          aria-label="打开菜单"
+          aria-label={t("sidebar.openMenu")}
         >
           <Menu className="h-5 w-5" />
         </Button>
@@ -154,26 +156,26 @@ export function AdminLayout({
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
-            aria-label="切换主题"
+            aria-label={t("theme.toggle")}
           >
             {getThemeIcon()}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" aria-label="用户菜单">
+              <Button variant="ghost" size="icon" aria-label={t("user.menu")}>
                 <UserCircle2 className="h-5 w-5" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuLabel className="truncate">
-                {user?.username || "管理员"}
+                {user?.username || t("user.defaultName")}
               </DropdownMenuLabel>
               {onLogout && (
                 <>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={onLogout}>
                     <LogOut className="h-4 w-4" />
-                    退出
+                    {t("auth.logout")}
                   </DropdownMenuItem>
                 </>
               )}
@@ -195,7 +197,7 @@ export function AdminLayout({
                 variant="ghost"
                 size="icon"
                 onClick={() => setMobileOpen(false)}
-                aria-label="关闭菜单"
+                aria-label={t("sidebar.closeMenu")}
               >
                 <ChevronLeft className="h-5 w-5" />
               </Button>
@@ -245,7 +247,7 @@ export function AdminLayout({
               variant="ghost"
               size="icon"
               onClick={() => setCollapsed(!collapsed)}
-              aria-label="折叠菜单"
+              aria-label={t("sidebar.collapseMenu")}
             >
               <ChevronLeft
                 className={[
@@ -287,26 +289,30 @@ export function AdminLayout({
                 variant="ghost"
                 size="icon"
                 onClick={toggleTheme}
-                aria-label="切换主题"
+                aria-label={t("theme.toggle")}
               >
                 {getThemeIcon("h-5 w-5")}
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" aria-label="用户菜单">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("user.menu")}
+                  >
                     <UserCircle2 className="h-5 w-5" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
                   <DropdownMenuLabel className="truncate">
-                    {user?.username || "管理员"}
+                    {user?.username || t("user.defaultName")}
                   </DropdownMenuLabel>
                   {onLogout && (
                     <>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={onLogout}>
                         <LogOut className="h-4 w-4" />
-                        退出
+                        {t("auth.logout")}
                       </DropdownMenuItem>
                     </>
                   )}

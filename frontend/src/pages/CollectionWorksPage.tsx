@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
 
 import { AdminLayout } from "@/components/AdminLayout";
@@ -10,12 +11,15 @@ import { useAuthStore } from "@/stores";
 import type { Work } from "@/types/api";
 
 export function CollectionWorksPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams();
   const collectionId = Number(id);
   const clearAuth = useAuthStore((state) => state.clearAuth);
 
-  const [collectionName, setCollectionName] = React.useState("作品集");
+  const [collectionName, setCollectionName] = React.useState(
+    t("collections.title").replace("管理", ""),
+  );
   const [works, setWorks] = React.useState<Work[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [loadingMore, setLoadingMore] = React.useState(false);
@@ -41,9 +45,9 @@ export function CollectionWorksPage() {
         setCollectionName(res.data.data.name);
       }
     } catch (error) {
-      console.error("加载作品集信息失败", error);
+      console.error(t("collections.loadFailed"), error);
     }
-  }, [collectionId, navigate]);
+  }, [collectionId, navigate, t]);
 
   const loadWorks = React.useCallback(
     async (pageNum: number, append: boolean) => {
@@ -83,7 +87,7 @@ export function CollectionWorksPage() {
         setHasMore(pageNum < totalPages);
         setPage(pageNum);
       } catch (error) {
-        console.error("加载作品集作品失败", error);
+        console.error(t("works.loadFailed"), error);
         if (!append) {
           setWorks([]);
         }
@@ -93,7 +97,7 @@ export function CollectionWorksPage() {
         setLoadingMore(false);
       }
     },
-    [collectionId],
+    [collectionId, t],
   );
 
   React.useEffect(() => {
@@ -128,9 +132,9 @@ export function CollectionWorksPage() {
 
   return (
     <AdminLayout
-      title={`作品集：${collectionName}`}
+      title={t("collections.worksTitle", { name: collectionName })}
       breadcrumbs={[
-        { label: "作品集管理", href: "/collections" },
+        { label: t("collections.title"), href: "/collections" },
         { label: collectionName },
       ]}
       onLogout={handleLogout}
@@ -143,17 +147,17 @@ export function CollectionWorksPage() {
             className="inline-flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
-            返回作品集
+            {t("collections.returnToCollections")}
           </Button>
         </div>
 
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">加载中...</p>
+            <p className="text-muted-foreground">{t("app.loading")}</p>
           </div>
         ) : works.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">该作品集暂无作品</p>
+            <p className="text-muted-foreground">{t("collections.noWorks")}</p>
           </div>
         ) : (
           <>
@@ -177,10 +181,12 @@ export function CollectionWorksPage() {
             </div>
             <div ref={loadMoreRef} className="py-4 text-center">
               {loadingMore && (
-                <p className="text-muted-foreground">加载中...</p>
+                <p className="text-muted-foreground">{t("app.loading")}</p>
               )}
               {!hasMore && works.length > 0 && (
-                <p className="text-muted-foreground text-sm">没有更多了</p>
+                <p className="text-muted-foreground text-sm">
+                  {t("app.noMore")}
+                </p>
               )}
             </div>
           </>

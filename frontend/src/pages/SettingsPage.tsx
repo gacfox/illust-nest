@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { systemService } from "@/services";
-import { useAuthStore, useSystemStore } from "@/stores";
+import { useAuthStore, useI18nStore, useSystemStore } from "@/stores";
 import type { SystemSettings } from "@/types/api";
 import { CircleHelp } from "lucide-react";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -24,8 +25,11 @@ import {
 } from "@/components/ui/tooltip";
 
 export function SettingsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const clearAuth = useAuthStore((state) => state.clearAuth);
+  const language = useI18nStore((state) => state.language);
+  const setLanguage = useI18nStore((state) => state.setLanguage);
   const systemSettings = useSystemStore((state) => state.settings);
   const setSettings = useSystemStore((state) => state.setSettings);
 
@@ -58,7 +62,7 @@ export function SettingsPage() {
         setLocalSettings(data);
       }
     } catch (err) {
-      console.error("加载设置失败", err);
+      console.error(t("settings.loadFailed"), err);
     } finally {
       setLoading(false);
     }
@@ -70,12 +74,12 @@ export function SettingsPage() {
       const res = await systemService.updateSettings(settings);
       if (res.data.code === 0) {
         setSettings(settings);
-        toast.success("设置已保存");
+        toast.success(t("settings.saveSuccess"));
       } else {
-        toast.error(res.data.message || "保存失败");
+        toast.error(res.data.message || t("settings.saveFailed"));
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "保存失败");
+      toast.error(err.response?.data?.message || t("settings.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -95,13 +99,16 @@ export function SettingsPage() {
       );
       if (res.data.code === 0) {
         toast.success(
-          `ImageMagick 可用（命令：${res.data.data.command}）。${res.data.data.message}`,
+          t("settings.testSuccess", {
+            command: res.data.data.command,
+            message: res.data.data.message,
+          }),
         );
       } else {
-        toast.error(res.data.message || "ImageMagick 测试失败");
+        toast.error(res.data.message || t("settings.testFailed"));
       }
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "ImageMagick 测试失败");
+      toast.error(err.response?.data?.message || t("settings.testFailed"));
     } finally {
       setTestingImageMagick(false);
     }
@@ -110,31 +117,33 @@ export function SettingsPage() {
   if (loading) {
     return (
       <AdminLayout
-        title="系统设置"
-        breadcrumbs={[{ label: "系统设置" }]}
+        title={t("settings.title")}
+        breadcrumbs={[{ label: t("settings.title") }]}
         onLogout={handleLogout}
       >
-        <div className="text-center text-muted-foreground">加载中...</div>
+        <div className="text-center text-muted-foreground">
+          {t("app.loading")}
+        </div>
       </AdminLayout>
     );
   }
 
   return (
     <AdminLayout
-      title="系统设置"
-      breadcrumbs={[{ label: "系统设置" }]}
+      title={t("settings.title")}
+      breadcrumbs={[{ label: t("settings.title") }]}
       onLogout={handleLogout}
     >
       <div className="max-w-2xl">
         <div className="space-y-6">
           <div className="bg-card border border-border rounded-lg p-6">
             <h2 className="text-lg font-medium text-foreground mb-4">
-              系统设置
+              {t("settings.section")}
             </h2>
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  网站标题
+                  {t("settings.siteTitle")}
                 </label>
                 <Input
                   type="text"
@@ -162,7 +171,7 @@ export function SettingsPage() {
                   htmlFor="public_gallery"
                   className="text-sm text-foreground cursor-pointer"
                 >
-                  启用公开展示
+                  {t("settings.publicGalleryEnabled")}
                 </label>
                 <TooltipProvider>
                   <Tooltip>
@@ -172,16 +181,45 @@ export function SettingsPage() {
                         variant="ghost"
                         size="icon"
                         className="h-5 w-5 rounded-full text-muted-foreground"
-                        aria-label="公开展示说明"
+                        aria-label={t("settings.publicGalleryAriaLabel")}
                       >
                         <CircleHelp className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="top" sideOffset={6}>
-                      勾选后，匿名用户可访问公开作品列表与详情、与之关联的图片及所有标签信息。
+                      {t("settings.publicGalleryHelp")}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-foreground mb-2">
+                  {t("settings.language")}
+                </label>
+                <Select
+                  value={language}
+                  onValueChange={(value) =>
+                    setLanguage(value as "zh-CN" | "zh-TW" | "en-US" | "ja-JP")
+                  }
+                >
+                  <SelectTrigger className="w-40">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="zh-CN">
+                      {t("settings.languageZhCN")}
+                    </SelectItem>
+                    <SelectItem value="zh-TW">
+                      {t("settings.languageZhTW")}
+                    </SelectItem>
+                    <SelectItem value="en-US">
+                      {t("settings.languageEnUS")}
+                    </SelectItem>
+                    <SelectItem value="ja-JP">
+                      {t("settings.languageJaJP")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
@@ -189,7 +227,7 @@ export function SettingsPage() {
           <div className="bg-card border border-border rounded-lg p-6">
             <div className="flex items-center gap-2 mb-4">
               <h2 className="text-lg font-medium text-foreground">
-                ImageMagick 设置
+                {t("settings.imageMagickSection")}
               </h2>
               <TooltipProvider>
                 <Tooltip>
@@ -199,14 +237,13 @@ export function SettingsPage() {
                       variant="ghost"
                       size="icon"
                       className="h-5 w-5 rounded-full text-muted-foreground"
-                      aria-label="ImageMagick 说明"
+                      aria-label={t("settings.imageMagickAriaLabel")}
                     >
                       <CircleHelp className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top" sideOffset={6}>
-                    用于 PSD 等格式转码预览。v7 使用 magick 命令，v6 使用
-                    convert 命令。
+                    {t("settings.imageMagickHelp")}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -228,13 +265,13 @@ export function SettingsPage() {
                   htmlFor="imagemagick_enabled"
                   className="text-sm text-foreground cursor-pointer"
                 >
-                  启用 ImageMagick 集成
+                  {t("settings.imageMagickEnabled")}
                 </label>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-foreground mb-2">
-                  ImageMagick 版本
+                  {t("settings.imageMagickVersion")}
                 </label>
                 <div className="flex items-center gap-3">
                   <Select
@@ -263,7 +300,9 @@ export function SettingsPage() {
                     onClick={handleTestImageMagick}
                     disabled={testingImageMagick}
                   >
-                    {testingImageMagick ? "测试中..." : "测试命令可用性"}
+                    {testingImageMagick
+                      ? t("settings.testing")
+                      : t("settings.testCommand")}
                   </Button>
                 </div>
               </div>
@@ -273,7 +312,7 @@ export function SettingsPage() {
           <div className="bg-card border border-border rounded-lg p-6">
             <div className="space-y-4">
               <Button onClick={handleSave} disabled={saving} className="w-full">
-                {saving ? "保存中..." : "保存设置"}
+                {saving ? t("settings.saving") : t("settings.save")}
               </Button>
             </div>
           </div>

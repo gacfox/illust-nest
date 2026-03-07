@@ -1,5 +1,6 @@
 import * as React from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   FolderOpen,
   RefreshCw,
@@ -41,6 +42,7 @@ import type { Collection } from "@/types/api";
 type CollectionTreeData = Collection[] | { items?: Collection[] };
 
 export function CollectionsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const [collections, setCollections] = React.useState<Collection[]>([]);
@@ -80,7 +82,7 @@ export function CollectionsPage() {
       const items = Array.isArray(payload) ? payload : (payload.items ?? []);
       setCollections(items);
     } catch (error) {
-      console.error("加载作品集失败", error);
+      console.error(t("collections.loadFailed"), error);
       setCollections([]);
     } finally {
       setLoading(false);
@@ -108,7 +110,7 @@ export function CollectionsPage() {
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      setFormError("请输入作品集名称");
+      setFormError(t("collections.fields.name") + t("common.required"));
       return;
     }
 
@@ -120,12 +122,12 @@ export function CollectionsPage() {
         description: description.trim(),
       });
       if (res.data.code !== 0) {
-        setFormError(res.data.message || "创建失败");
+        setFormError(res.data.message || t("collections.createFailed"));
         return;
       }
 
       setCreateOpen(false);
-      toast.success("作品集创建成功");
+      toast.success(t("collections.createSuccess"));
       await loadCollections();
     } catch (error: unknown) {
       const message =
@@ -136,7 +138,7 @@ export function CollectionsPage() {
           .response?.data?.message === "string"
           ? (error as { response?: { data?: { message?: string } } }).response!
               .data!.message!
-          : "创建失败";
+          : t("collections.createFailed");
       setFormError(message);
     } finally {
       setCreating(false);
@@ -148,7 +150,7 @@ export function CollectionsPage() {
       return;
     }
     if (!editName.trim()) {
-      setEditError("请输入作品集名称");
+      setEditError(t("collections.fields.name") + t("common.required"));
       return;
     }
 
@@ -160,12 +162,12 @@ export function CollectionsPage() {
         description: editDescription.trim(),
       });
       if (res.data.code !== 0) {
-        setEditError(res.data.message || "更新失败");
+        setEditError(res.data.message || t("collections.updateFailed"));
         return;
       }
 
       setEditOpen(false);
-      toast.success("作品集更新成功");
+      toast.success(t("collections.updateSuccess"));
       await loadCollections();
     } catch (error: unknown) {
       const message =
@@ -176,7 +178,7 @@ export function CollectionsPage() {
           .response?.data?.message === "string"
           ? (error as { response?: { data?: { message?: string } } }).response!
               .data!.message!
-          : "更新失败";
+          : t("collections.updateFailed");
       setEditError(message);
     } finally {
       setUpdating(false);
@@ -192,11 +194,11 @@ export function CollectionsPage() {
     try {
       const res = await collectionService.delete(deleteTarget.id);
       if (res.data.code !== 0) {
-        toast.error(res.data.message || "删除失败");
+        toast.error(res.data.message || t("collections.deleteFailed"));
         return;
       }
 
-      toast.success("作品集已删除");
+      toast.success(t("collections.deleteSuccess"));
       setDeleteTarget(null);
       await loadCollections();
     } catch (error: unknown) {
@@ -208,7 +210,7 @@ export function CollectionsPage() {
           .response?.data?.message === "string"
           ? (error as { response?: { data?: { message?: string } } }).response!
               .data!.message!
-          : "删除失败";
+          : t("collections.deleteFailed");
       toast.error(message);
     } finally {
       setDeleting(false);
@@ -217,29 +219,29 @@ export function CollectionsPage() {
 
   return (
     <AdminLayout
-      title="作品集管理"
-      breadcrumbs={[{ label: "作品集管理" }]}
+      title={t("collections.title")}
+      breadcrumbs={[{ label: t("collections.title") }]}
       onLogout={handleLogout}
     >
       <div className="space-y-4">
         <div className="flex items-center justify-end gap-2">
           <Button variant="outline" onClick={loadCollections}>
             <RefreshCw className="h-4 w-4 mr-2" />
-            刷新
+            {t("common.refresh")}
           </Button>
           <Button onClick={openCreateDialog}>
             <Plus className="h-4 w-4 mr-2" />
-            新建作品集
+            {t("collections.create")}
           </Button>
         </div>
 
         {loading ? (
           <div className="text-center py-12 text-muted-foreground">
-            加载中...
+            {t("app.loading")}
           </div>
         ) : collections.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            暂无作品集
+            {t("collections.noCollections")}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6 gap-4">
@@ -270,7 +272,7 @@ export function CollectionsPage() {
 
                 <div className="relative px-4 mb-2">
                   <p className="min-h-5 text-xs leading-5 text-muted-foreground truncate">
-                    {collection.description || "暂无描述"}
+                    {collection.description || t("common.noDescription")}
                   </p>
                 </div>
 
@@ -284,7 +286,7 @@ export function CollectionsPage() {
                       variant="outline"
                       size="icon"
                       className="h-7 w-7"
-                      aria-label="查看作品集"
+                      aria-label={t("collections.viewWorks")}
                       onClick={(e) => {
                         e.stopPropagation();
                         navigate(`/collections/${collection.id}/works`);
@@ -296,7 +298,7 @@ export function CollectionsPage() {
                       variant="outline"
                       size="icon"
                       className="h-7 w-7"
-                      aria-label="编辑作品集"
+                      aria-label={t("collections.editCollection")}
                       onClick={(e) => {
                         e.stopPropagation();
                         openEditDialog(collection);
@@ -308,7 +310,7 @@ export function CollectionsPage() {
                       variant="destructive"
                       size="icon"
                       className="h-7 w-7"
-                      aria-label="删除作品集"
+                      aria-label={t("collections.deleteCollection")}
                       onClick={(e) => {
                         e.stopPropagation();
                         setDeleteTarget(collection);
@@ -327,9 +329,9 @@ export function CollectionsPage() {
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>新建作品集</DialogTitle>
+            <DialogTitle>{t("collections.create")}</DialogTitle>
             <DialogDescription>
-              创建一个新的作品集用于归档和组织作品
+              {t("collections.fields.descriptionPlaceholder")}
             </DialogDescription>
           </DialogHeader>
 
@@ -338,23 +340,27 @@ export function CollectionsPage() {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="collection-name">名称</Label>
+            <Label htmlFor="collection-name">
+              {t("collections.fields.name")}
+            </Label>
             <Input
               id="collection-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
               maxLength={100}
-              placeholder="例如：角色设定集"
+              placeholder={t("collections.fields.namePlaceholder")}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="collection-desc">描述</Label>
+            <Label htmlFor="collection-desc">
+              {t("collections.fields.description")}
+            </Label>
             <Textarea
               id="collection-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              placeholder="可选，简要说明作品集内容"
+              placeholder={t("collections.fields.descriptionPlaceholder")}
             />
           </div>
 
@@ -364,10 +370,10 @@ export function CollectionsPage() {
               onClick={() => setCreateOpen(false)}
               disabled={creating}
             >
-              取消
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleCreate} disabled={creating}>
-              {creating ? "创建中..." : "创建"}
+              {creating ? t("common.creating") : t("common.create")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -376,8 +382,10 @@ export function CollectionsPage() {
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>编辑作品集</DialogTitle>
-            <DialogDescription>修改作品集名称与描述信息</DialogDescription>
+            <DialogTitle>{t("collections.edit")}</DialogTitle>
+            <DialogDescription>
+              {t("collections.fields.descriptionPlaceholder")}
+            </DialogDescription>
           </DialogHeader>
 
           {editError && (
@@ -385,23 +393,27 @@ export function CollectionsPage() {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="collection-edit-name">名称</Label>
+            <Label htmlFor="collection-edit-name">
+              {t("collections.fields.name")}
+            </Label>
             <Input
               id="collection-edit-name"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
               maxLength={100}
-              placeholder="例如：角色设定集"
+              placeholder={t("collections.fields.namePlaceholder")}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="collection-edit-desc">描述</Label>
+            <Label htmlFor="collection-edit-desc">
+              {t("collections.fields.description")}
+            </Label>
             <Textarea
               id="collection-edit-desc"
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
               rows={4}
-              placeholder="可选，简要说明作品集内容"
+              placeholder={t("collections.fields.descriptionPlaceholder")}
             />
           </div>
 
@@ -411,10 +423,10 @@ export function CollectionsPage() {
               onClick={() => setEditOpen(false)}
               disabled={updating}
             >
-              取消
+              {t("common.cancel")}
             </Button>
             <Button onClick={handleUpdate} disabled={updating}>
-              {updating ? "保存中..." : "保存"}
+              {updating ? t("common.saving") : t("common.save")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -430,15 +442,21 @@ export function CollectionsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除作品集？</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("collections.confirmDelete")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              将删除作品集「{deleteTarget?.name ?? ""}」，但不会删除其中的作品。
+              {t("collections.deleteDescription", {
+                name: deleteTarget?.name ?? "",
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>取消</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleting}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction onClick={handleDelete} disabled={deleting}>
-              {deleting ? "删除中..." : "确认删除"}
+              {deleting ? t("common.deleting") : t("common.confirmDelete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import {
   ArrowUpRight,
   FolderKanban,
@@ -49,6 +50,7 @@ function StatCard({ title, value, icon: Icon }: StatCardProps) {
 }
 
 export function StatisticsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const [loading, setLoading] = useState(true);
@@ -77,7 +79,7 @@ export function StatisticsPage() {
         setStats(res.data.data);
       }
     } catch (err) {
-      console.error("加载统计数据失败", err);
+      console.error(t("statistics.loadFailed"), err);
     } finally {
       setLoading(false);
     }
@@ -89,15 +91,15 @@ export function StatisticsPage() {
 
   return (
     <AdminLayout
-      title="数据统计"
-      breadcrumbs={[{ label: "数据统计" }]}
+      title={t("statistics.title")}
+      breadcrumbs={[{ label: t("statistics.title") }]}
       headerAction={
         <Button
           variant="ghost"
           size="icon"
           onClick={() => void loadStatistics()}
           disabled={loading}
-          aria-label="刷新统计数据"
+          aria-label={t("statistics.refreshStats")}
         >
           <RefreshCw
             className={["h-4 w-4", loading ? "animate-spin" : ""].join(" ")}
@@ -107,15 +109,29 @@ export function StatisticsPage() {
       onLogout={handleLogout}
     >
       {loading ? (
-        <div className="text-center text-muted-foreground">加载中...</div>
+        <div className="text-center text-muted-foreground">
+          {t("app.loading")}
+        </div>
       ) : (
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <StatCard title="作品数" value={stats.work_count} icon={Images} />
-            <StatCard title="图片数" value={stats.image_count} icon={Images} />
-            <StatCard title="标签数" value={stats.tag_count} icon={Tags} />
             <StatCard
-              title="作品集数"
+              title={t("statistics.workCount")}
+              value={stats.work_count}
+              icon={Images}
+            />
+            <StatCard
+              title={t("statistics.imageCount")}
+              value={stats.image_count}
+              icon={Images}
+            />
+            <StatCard
+              title={t("statistics.tagCount")}
+              value={stats.tag_count}
+              icon={Tags}
+            />
+            <StatCard
+              title={t("statistics.collectionCount")}
               value={stats.collection_count}
               icon={FolderKanban}
             />
@@ -123,16 +139,17 @@ export function StatisticsPage() {
 
           <Card>
             <CardHeader className="space-y-2">
-              <CardTitle>重复图片统计</CardTitle>
+              <CardTitle>{t("statistics.duplicateImages")}</CardTitle>
               <p className="text-sm text-muted-foreground">
-                按图片哈希分组，共 {stats.duplicate_image_groups.length}{" "}
-                组重复图片
+                {t("statistics.duplicateImagesDescription", {
+                  count: stats.duplicate_image_groups.length,
+                })}
               </p>
             </CardHeader>
             <CardContent>
               {stats.duplicate_image_groups.length === 0 ? (
                 <div className="text-sm text-muted-foreground">
-                  暂未检测到重复图片
+                  {t("statistics.noDuplicates")}
                 </div>
               ) : (
                 <div className="space-y-3 max-h-136 overflow-auto pr-1">
@@ -152,13 +169,17 @@ export function StatisticsPage() {
                             className="h-6 w-6 shrink-0"
                             onClick={() => setPreviewGroup(group)}
                             disabled={!group.preview_thumbnail_path}
-                            aria-label={`预览 hash ${group.image_hash} 图片`}
+                            aria-label={t("ariaLabels.hashPreview", {
+                              hash: group.image_hash,
+                            })}
                           >
                             <Image className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                         <span className="text-xs text-muted-foreground">
-                          重复图片 {group.total_images} 张
+                          {t("statistics.duplicateCount", {
+                            count: group.total_images,
+                          })}
                         </span>
                       </div>
                       <div className="space-y-2">
@@ -169,10 +190,12 @@ export function StatisticsPage() {
                           >
                             <div className="text-sm">
                               <span className="font-medium">
-                                作品 ID: {work.work_id}
+                                {t("statistics.workId")}: {work.work_id}
                               </span>
                               <span className="ml-3 text-muted-foreground">
-                                图片 {work.duplicate_count} 张
+                                {t("statistics.imageCountShort", {
+                                  count: work.duplicate_count,
+                                })}
                               </span>
                             </div>
                             <Button
@@ -181,7 +204,7 @@ export function StatisticsPage() {
                               onClick={() =>
                                 navigate(`/works/${work.work_id}/preview`)
                               }
-                              aria-label={`查看作品 ${work.work_id} 预览`}
+                              aria-label={t("ariaLabels.viewWorkPreview")}
                             >
                               <ArrowUpRight className="h-4 w-4" />
                             </Button>
@@ -207,7 +230,7 @@ export function StatisticsPage() {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>重复图片预览</DialogTitle>
+            <DialogTitle>{t("statistics.previewTitle")}</DialogTitle>
             <DialogDescription className="break-all">
               {previewGroup?.image_hash}
             </DialogDescription>
@@ -219,7 +242,9 @@ export function StatisticsPage() {
               className="max-h-[70vh] w-full rounded-md border border-border object-contain"
             />
           ) : (
-            <div className="text-sm text-muted-foreground">暂无可预览图片</div>
+            <div className="text-sm text-muted-foreground">
+              {t("statistics.noPreview")}
+            </div>
           )}
         </DialogContent>
       </Dialog>

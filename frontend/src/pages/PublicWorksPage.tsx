@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ArrowDown, ArrowUp, Search, SlidersHorizontal, X } from "lucide-react";
 
 import { PublicLayout } from "@/components/PublicLayout";
@@ -18,6 +19,7 @@ import { useSystemStatus } from "@/hooks/useSystemStatus";
 import type { Tag, Work } from "@/types/api";
 
 export function PublicWorksPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { status } = useSystemStatus();
   const [works, setWorks] = useState<Work[]>([]);
@@ -86,7 +88,7 @@ export function PublicWorksPage() {
           setPage(pageNum);
         }
       } catch (err) {
-        console.error("加载公开作品失败", err);
+        console.error(t("works.loadFailed"), err);
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -100,6 +102,7 @@ export function PublicWorksPage() {
       sortBy,
       sortOrder,
       mergeTagsFromWorks,
+      t,
     ],
   );
 
@@ -140,8 +143,8 @@ export function PublicWorksPage() {
           setTags(list);
         }
       })
-      .catch((err) => console.error("加载标签失败", err));
-  }, []);
+      .catch((err) => console.error(t("tags.loadFailed"), err));
+  }, [t]);
 
   const handleSearch = () => {
     loadWorks(1, false);
@@ -164,7 +167,7 @@ export function PublicWorksPage() {
 
   return (
     <PublicLayout
-      title="公开作品"
+      title={t("publicWorks.title")}
       siteTitle={status?.site_title || "Illust Nest"}
     >
       <div className="space-y-4">
@@ -177,7 +180,7 @@ export function PublicWorksPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSearch();
                 }}
-                placeholder="搜索标题或描述"
+                placeholder={t("works.fields.searchPlaceholder")}
                 className="pr-9"
               />
               {keyword && (
@@ -186,7 +189,7 @@ export function PublicWorksPage() {
                   size="sm"
                   onClick={() => setKeyword("")}
                   className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                  aria-label="清除输入"
+                  aria-label={t("ariaLabels.clearInput")}
                 >
                   <X className="h-3 w-3" />
                 </Button>
@@ -194,7 +197,7 @@ export function PublicWorksPage() {
             </div>
             <Button onClick={handleSearch}>
               <Search className="h-4 w-4 mr-1" />
-              搜索
+              {t("common.search")}
             </Button>
             <Button
               variant="outline"
@@ -202,7 +205,7 @@ export function PublicWorksPage() {
               className="inline-flex items-center gap-2"
             >
               <SlidersHorizontal className="h-4 w-4" />
-              筛选
+              {t("works.filter")}
               {filteredTagCount > 0 && (
                 <span className="text-xs bg-primary text-primary-foreground rounded-full px-2">
                   {filteredTagCount}
@@ -238,7 +241,9 @@ export function PublicWorksPage() {
             </div>
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">评分</span>
+                <span className="text-sm text-muted-foreground">
+                  {t("works.fields.rating")}
+                </span>
                 <Select
                   value={ratingMin.toString()}
                   onValueChange={(value) => setRatingMin(Number(value))}
@@ -254,7 +259,9 @@ export function PublicWorksPage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <span className="text-sm text-muted-foreground">至</span>
+                <span className="text-sm text-muted-foreground">
+                  {t("works.to")}
+                </span>
                 <Select
                   value={ratingMax.toString()}
                   onValueChange={(value) => setRatingMax(Number(value))}
@@ -272,7 +279,9 @@ export function PublicWorksPage() {
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">排序</span>
+                <span className="text-sm text-muted-foreground">
+                  {t("works.sort.sort")}
+                </span>
                 <Select
                   value={`${sortBy}:${sortOrder}`}
                   onValueChange={(value) => {
@@ -286,37 +295,45 @@ export function PublicWorksPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="created_at:desc">
-                      创建时间 <ArrowDown className="inline h-3 w-3" />
+                      {t("works.sort.createdAt")}{" "}
+                      <ArrowDown className="inline h-3 w-3" />
                     </SelectItem>
                     <SelectItem value="created_at:asc">
-                      创建时间 <ArrowUp className="inline h-3 w-3" />
+                      {t("works.sort.createdAt")}{" "}
+                      <ArrowUp className="inline h-3 w-3" />
                     </SelectItem>
                     <SelectItem value="updated_at:desc">
-                      更新时间 <ArrowDown className="inline h-3 w-3" />
+                      {t("works.sort.updatedAt")}{" "}
+                      <ArrowDown className="inline h-3 w-3" />
                     </SelectItem>
                     <SelectItem value="updated_at:asc">
-                      更新时间 <ArrowUp className="inline h-3 w-3" />
+                      {t("works.sort.updatedAt")}{" "}
+                      <ArrowUp className="inline h-3 w-3" />
                     </SelectItem>
                     <SelectItem value="rating:desc">
-                      评分 <ArrowDown className="inline h-3 w-3" />
+                      {t("works.fields.rating")}{" "}
+                      <ArrowDown className="inline h-3 w-3" />
                     </SelectItem>
                     <SelectItem value="rating:asc">
-                      评分 <ArrowUp className="inline h-3 w-3" />
+                      {t("works.fields.rating")}{" "}
+                      <ArrowUp className="inline h-3 w-3" />
                     </SelectItem>
                     <SelectItem value="title:asc">
-                      标题 <ArrowUp className="inline h-3 w-3" />
+                      {t("works.fields.title")}{" "}
+                      <ArrowUp className="inline h-3 w-3" />
                     </SelectItem>
                     <SelectItem value="title:desc">
-                      标题 <ArrowDown className="inline h-3 w-3" />
+                      {t("works.fields.title")}{" "}
+                      <ArrowDown className="inline h-3 w-3" />
                     </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <Button variant="outline" size="sm" onClick={handleSearch}>
-                应用筛选
+                {t("works.applyFilter")}
               </Button>
               <Button variant="outline" size="sm" onClick={handleResetFilters}>
-                重置
+                {t("works.reset")}
               </Button>
             </div>
           </div>
@@ -324,11 +341,11 @@ export function PublicWorksPage() {
 
         {loading ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">加载中...</p>
+            <p className="text-muted-foreground">{t("app.loading")}</p>
           </div>
         ) : works.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">暂无公开作品</p>
+            <p className="text-muted-foreground">{t("publicWorks.noWorks")}</p>
           </div>
         ) : (
           <>
@@ -345,10 +362,12 @@ export function PublicWorksPage() {
             </div>
             <div ref={loadMoreRef} className="py-4 text-center">
               {loadingMore && (
-                <p className="text-muted-foreground">加载中...</p>
+                <p className="text-muted-foreground">{t("app.loading")}</p>
               )}
               {!hasMore && works.length > 0 && (
-                <p className="text-muted-foreground text-sm">没有更多了</p>
+                <p className="text-muted-foreground text-sm">
+                  {t("app.noMore")}
+                </p>
               )}
             </div>
           </>

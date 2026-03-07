@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { authService } from "@/services";
 import { useAuthStore } from "@/stores";
 import { useNavigate } from "react-router-dom";
@@ -15,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const setAuth = useAuthStore((state) => state.setAuth);
   const [username, setUsername] = useState("");
@@ -38,7 +40,7 @@ export function LoginPage() {
         setError(res.data.message);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || "登录失败");
+      setError(err.response?.data?.message || t("auth.loginFailed"));
     } finally {
       setLoading(false);
     }
@@ -49,7 +51,7 @@ export function LoginPage() {
       <Card className="w-full max-w-sm sm:max-w-md md:max-w-lg">
         <CardHeader className="space-y-2 text-center">
           <CardTitle className="text-2xl sm:text-3xl">Illust Nest</CardTitle>
-          <CardDescription>登录您的账户</CardDescription>
+          <CardDescription>{t("auth.login")}</CardDescription>
         </CardHeader>
         <CardContent>
           <form className="space-y-5" onSubmit={handleSubmit}>
@@ -60,7 +62,7 @@ export function LoginPage() {
             )}
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="username">用户名</Label>
+                <Label htmlFor="username">{t("auth.username")}</Label>
                 <Input
                   id="username"
                   type="text"
@@ -70,7 +72,7 @@ export function LoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">密码</Label>
+                <Label htmlFor="password">{t("auth.password")}</Label>
                 <Input
                   id="password"
                   type="password"
@@ -82,7 +84,7 @@ export function LoginPage() {
             </div>
             <CardFooter className="px-0 pt-1">
               <Button type="submit" disabled={loading} className="w-full">
-                {loading ? "登录中..." : "登录"}
+                {loading ? t("auth.loggingIn") : t("auth.login")}
               </Button>
             </CardFooter>
           </form>

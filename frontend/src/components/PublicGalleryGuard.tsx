@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useSystemStatus } from "@/hooks/useSystemStatus";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 
@@ -6,12 +7,13 @@ type PublicGalleryGuardProps = {
 };
 
 export function PublicGalleryGuard({ children }: PublicGalleryGuardProps) {
+  const { t } = useTranslation();
   const { status, loading } = useSystemStatus();
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
-        <p>加载中...</p>
+        <p>{t("app.loading")}</p>
       </div>
     );
   }

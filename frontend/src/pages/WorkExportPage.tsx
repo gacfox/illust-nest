@@ -1,4 +1,5 @@
 import * as React from "react";
+import { useTranslation } from "react-i18next";
 import { Download, FileArchive } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
@@ -31,6 +32,7 @@ function parseFilename(contentDisposition?: string): string {
 }
 
 export function WorkExportPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const [exporting, setExporting] = React.useState(false);
@@ -57,10 +59,10 @@ export function WorkExportPage() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(url);
-      toast.success("导出任务已完成");
+      toast.success(t("export.success"));
     } catch (error) {
-      console.error("导出失败", error);
-      toast.error("导出失败");
+      console.error(t("export.failed"), error);
+      toast.error(t("export.failed"));
     } finally {
       setExporting(false);
     }
@@ -68,8 +70,8 @@ export function WorkExportPage() {
 
   return (
     <AdminLayout
-      title="作品导出"
-      breadcrumbs={[{ label: "作品导出" }]}
+      title={t("export.title")}
+      breadcrumbs={[{ label: t("export.title") }]}
       onLogout={handleLogout}
     >
       <div className="max-w-3xl">
@@ -80,23 +82,23 @@ export function WorkExportPage() {
             </div>
             <div>
               <h2 className="text-lg font-semibold text-foreground">
-                导出全部已上传图片
+                {t("export.exportTitle")}
               </h2>
               <p className="text-sm text-muted-foreground">
-                一键打包为 ZIP 文件并下载到本地
+                {t("export.exportDescription")}
               </p>
             </div>
           </div>
 
           <div className="mb-6 space-y-2 text-sm text-muted-foreground">
-            <p>1. 导出范围：系统中已上传并保存在服务器中的所有原图文件。</p>
-            <p>2. 输出格式：`zip` 压缩包，文件结构保留上传目录层级。</p>
-            <p>3. 注意事项：导出文件较大时，下载会持续更久，请耐心等待。</p>
+            <p>{t("export.steps.scope")}</p>
+            <p>{t("export.steps.format")}</p>
+            <p>{t("export.steps.note")}</p>
           </div>
 
           <Button onClick={handleExport} disabled={exporting}>
             <Download className="mr-2 h-4 w-4" />
-            {exporting ? "导出中..." : "导出全部图片"}
+            {exporting ? t("export.exporting") : t("export.exportButton")}
           </Button>
         </div>
       </div>

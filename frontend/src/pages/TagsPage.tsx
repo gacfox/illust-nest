@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { AdminLayout } from "@/components/AdminLayout";
 import { tagService } from "@/services";
 import type { Tag } from "@/types/api";
@@ -39,6 +40,7 @@ import {
 type ModalMode = "create" | "edit";
 
 export function TagsPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const [keyword, setKeyword] = useState("");
@@ -68,7 +70,7 @@ export function TagsPage() {
         setTags(res.data.data?.items ?? []);
       }
     } catch (err) {
-      console.error("加载标签失败", err);
+      console.error(t("tags.loadFailed"), err);
     } finally {
       setLoading(false);
     }
@@ -96,14 +98,14 @@ export function TagsPage() {
 
   const handleSave = async () => {
     if (!modalName.trim()) {
-      setError("请输入标签名称");
+      setError(t("tags.nameRequired"));
       return;
     }
     try {
       if (modalMode === "create") {
         const res = await tagService.create({ name: modalName.trim() });
         if (res.data.code !== 0) {
-          setError(res.data.message || "创建失败");
+          setError(res.data.message || t("tags.createFailed"));
           return;
         }
       } else if (editingTag) {
@@ -111,14 +113,14 @@ export function TagsPage() {
           name: modalName.trim(),
         });
         if (res.data.code !== 0) {
-          setError(res.data.message || "更新失败");
+          setError(res.data.message || t("tags.updateFailed"));
           return;
         }
       }
       setModalOpen(false);
       loadTags();
     } catch (err: any) {
-      setError(err.response?.data?.message || "保存失败");
+      setError(err.response?.data?.message || t("tags.saveFailed"));
     }
   };
 
@@ -129,7 +131,7 @@ export function TagsPage() {
       setDeleteTag(null);
       loadTags();
     } catch (err) {
-      console.error("删除标签失败", err);
+      console.error(t("tags.deleteFailed"), err);
     }
   };
 
@@ -137,8 +139,8 @@ export function TagsPage() {
 
   return (
     <AdminLayout
-      title="标签管理"
-      breadcrumbs={[{ label: "标签管理" }]}
+      title={t("tags.title")}
+      breadcrumbs={[{ label: t("tags.title") }]}
       onLogout={handleLogout}
     >
       <div className="space-y-4">
@@ -151,7 +153,7 @@ export function TagsPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") loadTags();
                 }}
-                placeholder="搜索标签"
+                placeholder={t("tags.searchPlaceholder")}
                 className="pr-9"
               />
               {keyword && (
@@ -160,7 +162,7 @@ export function TagsPage() {
                   size="sm"
                   onClick={() => setKeyword("")}
                   className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                  aria-label="清除输入"
+                  aria-label={t("ariaLabels.clearInput")}
                 >
                   <X className="h-3 w-3" />
                 </Button>
@@ -168,12 +170,12 @@ export function TagsPage() {
             </div>
             <Button onClick={loadTags}>
               <Search className="h-4 w-4 mr-1" />
-              搜索
+              {t("common.search")}
             </Button>
           </div>
           <Button onClick={openCreate}>
             <Plus className="h-4 w-4 mr-1" />
-            新建标签
+            {t("tags.create")}
           </Button>
         </div>
 
@@ -181,23 +183,25 @@ export function TagsPage() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>标签名称</TableHead>
-                <TableHead>类型</TableHead>
-                <TableHead>关联作品数</TableHead>
-                <TableHead className="text-right">操作</TableHead>
+                <TableHead>{t("tags.fields.name")}</TableHead>
+                <TableHead>{t("tags.type")}</TableHead>
+                <TableHead>{t("tags.workCount")}</TableHead>
+                <TableHead className="text-right">
+                  {t("tags.actions")}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-muted-foreground">
-                    加载中...
+                    {t("app.loading")}
                   </TableCell>
                 </TableRow>
               ) : rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={4} className="text-muted-foreground">
-                    暂无标签
+                    {t("tags.noTags")}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -207,7 +211,9 @@ export function TagsPage() {
                       {tag.name}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
-                      {tag.is_system ? "系统标签" : "普通标签"}
+                      {tag.is_system
+                        ? t("tags.systemTag")
+                        : t("tags.normalTag")}
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {tag.work_count ?? "-"}
@@ -215,7 +221,7 @@ export function TagsPage() {
                     <TableCell className="text-right">
                       {tag.is_system ? (
                         <span className="text-xs text-muted-foreground">
-                          不可编辑
+                          {t("tags.notEditable")}
                         </span>
                       ) : (
                         <div className="flex justify-end gap-2">
@@ -224,7 +230,7 @@ export function TagsPage() {
                             size="sm"
                             onClick={() => openEdit(tag)}
                           >
-                            编辑
+                            {t("common.edit")}
                           </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -233,27 +239,28 @@ export function TagsPage() {
                                 size="sm"
                                 onClick={() => setDeleteTag(tag)}
                               >
-                                删除
+                                {t("common.delete")}
                               </Button>
                             </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>
-                                  确认删除标签
+                                  {t("tags.confirmDelete")}
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  确定要删除标签 "{deleteTag?.name}"
-                                  吗？此操作无法撤销。
+                                  {t("tags.confirmDeleteDescription", {
+                                    name: deleteTag?.name,
+                                  })}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel
                                   onClick={() => setDeleteTag(null)}
                                 >
-                                  取消
+                                  {t("common.cancel")}
                                 </AlertDialogCancel>
                                 <AlertDialogAction onClick={handleDelete}>
-                                  删除
+                                  {t("common.delete")}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -273,15 +280,15 @@ export function TagsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              {modalMode === "create" ? "新建标签" : "编辑标签"}
+              {modalMode === "create" ? t("tags.create") : t("common.edit")}
             </DialogTitle>
             <DialogDescription>
-              请输入标签名称，支持中文、英文、数字
+              {t("tags.fields.namePlaceholder")}
             </DialogDescription>
           </DialogHeader>
           {error && <div className="text-sm text-destructive">{error}</div>}
           <div className="space-y-2">
-            <Label>标签名称</Label>
+            <Label>{t("tags.fields.name")}</Label>
             <Input
               value={modalName}
               onChange={(e) => setModalName(e.target.value)}
@@ -289,9 +296,9 @@ export function TagsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setModalOpen(false)}>
-              取消
+              {t("common.cancel")}
             </Button>
-            <Button onClick={handleSave}>保存</Button>
+            <Button onClick={handleSave}>{t("common.save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

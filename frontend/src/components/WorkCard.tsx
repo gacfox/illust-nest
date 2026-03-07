@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { useTranslation } from "react-i18next";
 import { Layers } from "lucide-react";
 
 import { AuthImage } from "@/components/AuthImage";
@@ -22,6 +23,7 @@ export function WorkCard({
   showPublicBadge = false,
   publicAccess = false,
 }: WorkCardProps) {
+  const { t } = useTranslation();
   const tagNames = work.tags?.map((tag) => tag.name) ?? [];
   const adultBadge = tagNames.includes("R18G")
     ? "R18G"
@@ -56,7 +58,7 @@ export function WorkCard({
             className="w-full h-55 bg-muted flex items-center justify-center text-muted-foreground text-sm cursor-pointer"
             onClick={onPreview}
           >
-            无封面
+            {t("common.noCover")}
           </div>
         )}
 
@@ -64,7 +66,7 @@ export function WorkCard({
           <div className="absolute top-2 right-2 flex items-center gap-1.5">
             {showPublicBadge && work.is_public && (
               <Badge className="border-0 bg-black/55 text-white hover:bg-black/65">
-                公开
+                {t("common.public")}
               </Badge>
             )}
             {adultBadge && (

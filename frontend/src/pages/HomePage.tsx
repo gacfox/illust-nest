@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { tagService, workService } from "@/services";
 import { useNavigate } from "react-router-dom";
 import type { Tag, Work } from "@/types/api";
@@ -38,6 +39,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export function HomePage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const [works, setWorks] = useState<Work[]>([]);
@@ -95,7 +97,7 @@ export function HomePage() {
           setPage(pageNum);
         }
       } catch (err) {
-        console.error("加载作品失败", err);
+        console.error(t("works.loadFailed"), err);
       } finally {
         setLoading(false);
         setLoadingMore(false);
@@ -109,6 +111,7 @@ export function HomePage() {
       isPublic,
       sortBy,
       sortOrder,
+      t,
     ],
   );
 
@@ -155,8 +158,8 @@ export function HomePage() {
           setTags(list);
         }
       })
-      .catch((err) => console.error("加载标签失败", err));
-  }, []);
+      .catch((err) => console.error(t("tags.loadFailed"), err));
+  }, [t]);
 
   const handleSearch = () => {
     loadWorks(1, false);
@@ -189,7 +192,7 @@ export function HomePage() {
       setBatchDeleteOpen(false);
       loadWorks();
     } catch (err) {
-      console.error("批量删除失败", err);
+      console.error(t("works.deleteFailed"), err);
     } finally {
       setDeletingBatch(false);
     }
@@ -202,7 +205,7 @@ export function HomePage() {
       setSelectedIds([]);
       loadWorks();
     } catch (err) {
-      console.error("批量更新公开状态失败", err);
+      console.error(t("works.saveFailed"), err);
     }
   };
 
@@ -214,7 +217,7 @@ export function HomePage() {
       setDeleteWorkId(null);
       loadWorks();
     } catch (err) {
-      console.error("删除失败", err);
+      console.error(t("works.deleteFailed"), err);
     } finally {
       setDeletingSingle(false);
     }
@@ -233,8 +236,8 @@ export function HomePage() {
 
   return (
     <AdminLayout
-      title="作品管理"
-      breadcrumbs={[{ label: "作品管理" }]}
+      title={t("works.title")}
+      breadcrumbs={[{ label: t("works.title") }]}
       onLogout={handleLogout}
     >
       <div className="space-y-4">
@@ -247,7 +250,7 @@ export function HomePage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleSearch();
                 }}
-                placeholder="搜索标题或描述"
+                placeholder={t("works.searchPlaceholder")}
                 className="pr-9"
               />
               {keyword && (
@@ -256,7 +259,7 @@ export function HomePage() {
                   size="sm"
                   onClick={() => setKeyword("")}
                   className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                  aria-label="清除输入"
+                  aria-label={t("ariaLabels.clearInput")}
                 >
                   <X className="h-3 w-3" />
                 </Button>
@@ -264,7 +267,7 @@ export function HomePage() {
             </div>
             <Button onClick={handleSearch}>
               <Search className="h-4 w-4 mr-1" />
-              搜索
+              {t("common.search")}
             </Button>
             <Button
               variant="outline"
@@ -272,7 +275,7 @@ export function HomePage() {
               className="inline-flex items-center gap-2"
             >
               <SlidersHorizontal className="h-4 w-4" />
-              筛选
+              {t("works.filter")}
               {filteredTagCount > 0 && (
                 <span className="text-xs bg-primary text-primary-foreground rounded-full px-2">
                   {filteredTagCount}
@@ -291,13 +294,13 @@ export function HomePage() {
               className="inline-flex items-center gap-2"
             >
               <ListChecks className="h-4 w-4" />
-              批量
+              {t("works.batch")}
             </Button>
           </div>
           <div className="flex items-center gap-2">
             <Button onClick={() => navigate("/works/create")}>
               <Plus className="h-4 w-4" />
-              新建
+              {t("works.create")}
             </Button>
           </div>
         </div>
@@ -328,7 +331,9 @@ export function HomePage() {
             </div>
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">评分</span>
+                <span className="text-sm text-muted-foreground">
+                  {t("rating.label")}
+                </span>
                 <Select
                   value={ratingMin.toString()}
                   onValueChange={(value) => setRatingMin(Number(value))}
@@ -344,7 +349,9 @@ export function HomePage() {
                     ))}
                   </SelectContent>
                 </Select>
-                <span className="text-sm text-muted-foreground">至</span>
+                <span className="text-sm text-muted-foreground">
+                  {t("rating.range")}
+                </span>
                 <Select
                   value={ratingMax.toString()}
                   onValueChange={(value) => setRatingMax(Number(value))}
@@ -362,7 +369,9 @@ export function HomePage() {
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">公开状态</span>
+                <span className="text-sm text-muted-foreground">
+                  {t("publicStatus.label")}
+                </span>
                 <Select
                   value={isPublic}
                   onValueChange={(value) =>
@@ -373,14 +382,20 @@ export function HomePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">全部</SelectItem>
-                    <SelectItem value="public">公开</SelectItem>
-                    <SelectItem value="private">私密</SelectItem>
+                    <SelectItem value="all">{t("publicStatus.all")}</SelectItem>
+                    <SelectItem value="public">
+                      {t("publicStatus.public")}
+                    </SelectItem>
+                    <SelectItem value="private">
+                      {t("publicStatus.private")}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">排序</span>
+                <span className="text-sm text-muted-foreground">
+                  {t("sort.label")}
+                </span>
                 <Select
                   value={`${sortBy}:${sortOrder}`}
                   onValueChange={(value) => {
@@ -394,37 +409,45 @@ export function HomePage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="created_at:desc">
-                      创建时间 <ArrowDown className="inline h-3 w-3" />
+                      {t("works.sortOptions.createdAtDesc")}{" "}
+                      <ArrowDown className="inline h-3 w-3" />
                     </SelectItem>
                     <SelectItem value="created_at:asc">
-                      创建时间 <ArrowUp className="inline h-3 w-3" />
+                      {t("works.sortOptions.createdAtAsc")}{" "}
+                      <ArrowUp className="inline h-3 w-3" />
                     </SelectItem>
                     <SelectItem value="updated_at:desc">
-                      更新时间 <ArrowDown className="inline h-3 w-3" />
+                      {t("works.sortOptions.updatedAtDesc")}{" "}
+                      <ArrowDown className="inline h-3 w-3" />
                     </SelectItem>
                     <SelectItem value="updated_at:asc">
-                      更新时间 <ArrowUp className="inline h-3 w-3" />
+                      {t("works.sortOptions.updatedAtAsc")}{" "}
+                      <ArrowUp className="inline h-3 w-3" />
                     </SelectItem>
                     <SelectItem value="rating:desc">
-                      评分 <ArrowDown className="inline h-3 w-3" />
+                      {t("works.sortOptions.ratingDesc")}{" "}
+                      <ArrowDown className="inline h-3 w-3" />
                     </SelectItem>
                     <SelectItem value="rating:asc">
-                      评分 <ArrowUp className="inline h-3 w-3" />
+                      {t("works.sortOptions.ratingAsc")}{" "}
+                      <ArrowUp className="inline h-3 w-3" />
                     </SelectItem>
                     <SelectItem value="title:asc">
-                      标题 <ArrowUp className="inline h-3 w-3" />
+                      {t("works.sortOptions.titleAsc")}{" "}
+                      <ArrowUp className="inline h-3 w-3" />
                     </SelectItem>
                     <SelectItem value="title:desc">
-                      标题 <ArrowDown className="inline h-3 w-3" />
+                      {t("works.sortOptions.titleDesc")}{" "}
+                      <ArrowDown className="inline h-3 w-3" />
                     </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <Button variant="outline" size="sm" onClick={handleSearch}>
-                应用筛选
+                {t("common.apply")}
               </Button>
               <Button variant="outline" size="sm" onClick={handleResetFilters}>
-                重置
+                {t("common.reset")}
               </Button>
             </div>
           </div>
@@ -433,7 +456,7 @@ export function HomePage() {
         {batchPanelOpen && (
           <div className="bg-card border border-border rounded-lg p-3 flex flex-wrap items-center gap-3 text-sm">
             <span className="text-muted-foreground">
-              已选 {selectedIds.length} 项
+              {t("common.selected", { count: selectedIds.length })}
             </span>
             <Button
               variant="outline"
@@ -441,7 +464,7 @@ export function HomePage() {
               onClick={() => setSelectedIds(works.map((item) => item.id))}
               disabled={works.length === 0}
             >
-              全选当前页
+              {t("common.selectAll")}
             </Button>
             <Button
               variant="outline"
@@ -449,7 +472,7 @@ export function HomePage() {
               onClick={() => setSelectedIds([])}
               disabled={selectedIds.length === 0}
             >
-              清空选择
+              {t("common.clearSelection")}
             </Button>
             <Button
               variant="destructive"
@@ -457,7 +480,7 @@ export function HomePage() {
               onClick={() => setBatchDeleteOpen(true)}
               disabled={selectedIds.length === 0}
             >
-              批量删除
+              {t("works.batchDelete")}
             </Button>
             <Button
               variant="outline"
@@ -465,7 +488,7 @@ export function HomePage() {
               onClick={() => handleBatchPublic(true)}
               disabled={selectedIds.length === 0}
             >
-              设为公开
+              {t("works.setPublic")}
             </Button>
             <Button
               variant="outline"
@@ -473,7 +496,7 @@ export function HomePage() {
               onClick={() => handleBatchPublic(false)}
               disabled={selectedIds.length === 0}
             >
-              设为私密
+              {t("works.setPrivate")}
             </Button>
             <Button
               variant="ghost"
@@ -483,7 +506,7 @@ export function HomePage() {
                 setSelectedIds([]);
               }}
             >
-              收起
+              {t("common.close")}
             </Button>
           </div>
         )}
@@ -492,11 +515,11 @@ export function HomePage() {
       <div className="h-4" />
       {loading ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">加载中...</p>
+          <p className="text-muted-foreground">{t("app.loading")}</p>
         </div>
       ) : works.length === 0 ? (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">暂无作品</p>
+          <p className="text-muted-foreground">{t("works.noWorks")}</p>
         </div>
       ) : (
         <>
@@ -523,7 +546,7 @@ export function HomePage() {
                       size="icon"
                       onClick={() => navigate(`/works/${work.id}`)}
                       className="h-7 w-7"
-                      aria-label="编辑作品"
+                      aria-label={t("ariaLabels.editWork")}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
@@ -532,7 +555,7 @@ export function HomePage() {
                       size="icon"
                       onClick={() => setDeleteWorkId(work.id)}
                       className="h-7 w-7"
-                      aria-label="删除作品"
+                      aria-label={t("ariaLabels.deleteWork")}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -542,9 +565,11 @@ export function HomePage() {
             ))}
           </div>
           <div ref={loadMoreRef} className="py-4 text-center">
-            {loadingMore && <p className="text-muted-foreground">加载中...</p>}
+            {loadingMore && (
+              <p className="text-muted-foreground">{t("app.loading")}</p>
+            )}
             {!hasMore && works.length > 0 && (
-              <p className="text-muted-foreground text-sm">没有更多了</p>
+              <p className="text-muted-foreground text-sm">{t("app.noMore")}</p>
             )}
           </div>
         </>
@@ -560,19 +585,21 @@ export function HomePage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认批量删除作品？</AlertDialogTitle>
+            <AlertDialogTitle>{t("works.confirmBatchDelete")}</AlertDialogTitle>
             <AlertDialogDescription>
-              将删除选中的 {selectedIds.length} 个作品，该操作不可恢复。
+              {t("works.batchDeleteDescription", { count: selectedIds.length })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletingBatch}>取消</AlertDialogCancel>
+            <AlertDialogCancel disabled={deletingBatch}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={handleBatchDelete}
               disabled={deletingBatch || selectedIds.length === 0}
             >
-              {deletingBatch ? "删除中..." : "确认删除"}
+              {deletingBatch ? t("common.deleting") : t("common.confirmDelete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -588,21 +615,23 @@ export function HomePage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除作品？</AlertDialogTitle>
+            <AlertDialogTitle>{t("works.confirmDelete")}</AlertDialogTitle>
             <AlertDialogDescription>
-              删除后将无法恢复该作品及其关联图片。
+              {t("works.deleteDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deletingSingle}>
-              取消
+              {t("common.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               variant="destructive"
               onClick={handleDelete}
               disabled={deletingSingle}
             >
-              {deletingSingle ? "删除中..." : "确认删除"}
+              {deletingSingle
+                ? t("common.deleting")
+                : t("common.confirmDelete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

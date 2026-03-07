@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
 import { CircleHelp, Sparkles, Plus, Trash2 } from "lucide-react";
 import { AdminLayout } from "@/components/AdminLayout";
@@ -73,6 +74,7 @@ type EditingAIMetadataTarget =
     };
 
 export function WorkEditPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -118,7 +120,7 @@ export function WorkEditPage() {
     typeof editSource?.collectionName === "string" &&
     editSource.collectionName.trim() !== ""
       ? editSource.collectionName
-      : "作品集";
+      : t("collections.title").replace("管理", "");
   const collectionWorksHref =
     typeof editSource?.collectionId === "number" && editSource.collectionId > 0
       ? `/collections/${editSource.collectionId}/works`
@@ -147,12 +149,12 @@ export function WorkEditPage() {
         setTags(list);
       }
     } catch (err) {
-      console.error("加载作品失败", err);
-      setError("加载作品失败");
+      console.error(t("works.loadFailed"), err);
+      setError(t("works.loadFailed"));
     } finally {
       setLoading(false);
     }
-  }, [workId, navigate]);
+  }, [workId, navigate, t, isNew]);
 
   useEffect(() => {
     loadData();
@@ -181,7 +183,7 @@ export function WorkEditPage() {
         isSupportedUploadFile(file),
       );
       if (imageFiles.length === 0) {
-        toast.error("请拖拽图片文件");
+        toast.error(t("works.fields.dropToUpload"));
         return;
       }
       handleFiles(imageFiles);
@@ -244,9 +246,11 @@ export function WorkEditPage() {
   const uploadHint = useMemo(() => {
     const uploadCount = isNew ? newUploads.length : newUploads.length;
     if (uploadCount === 0)
-      return isNew ? "拖拽或点击上传图片（至少 1 张）" : "可添加新图片";
-    return "可继续拖拽或点击添加更多图片";
-  }, [newUploads.length, isNew]);
+      return isNew
+        ? t("works.fields.uploadHint")
+        : t("works.fields.uploadHintEdit");
+    return t("works.fields.uploadHintMore");
+  }, [newUploads.length, isNew, t]);
 
   const handleSave = async () => {
     if (!canSave) return;
@@ -283,16 +287,16 @@ export function WorkEditPage() {
         });
         const createRes = await workService.create(formData);
         if (createRes.data.code !== 0) {
-          toast.error(createRes.data.message || "创建作品失败");
+          toast.error(createRes.data.message || t("works.createFailed"));
           return;
         }
         const createdId = createRes.data.data?.id;
         if (createdId) {
           clearNewUploads();
-          toast.success("作品创建成功");
+          toast.success(t("works.createSuccess"));
           navigate(`/works/${createdId}`);
         } else {
-          toast.success("作品创建成功");
+          toast.success(t("works.createSuccess"));
           navigate("/");
         }
       } else {
@@ -304,7 +308,7 @@ export function WorkEditPage() {
           tag_ids: selectedTagIds,
         });
         if (updateRes.data.code !== 0) {
-          toast.error(updateRes.data.message || "保存失败");
+          toast.error(updateRes.data.message || t("works.saveFailed"));
           return;
         }
 
@@ -324,20 +328,18 @@ export function WorkEditPage() {
           });
           const uploadRes = await workService.addImages(workId, formData);
           if (uploadRes.data.code !== 0) {
-            toast.error(uploadRes.data.message || "上传图片失败");
+            toast.error(uploadRes.data.message || t("works.uploadFailed"));
             return;
           }
         }
 
-        toast.success("作品保存成功", {
-          description: "您的修改已成功保存",
-        });
+        toast.success(t("works.saveSuccess"));
 
         clearNewUploads();
         await loadData();
       }
     } catch (err) {
-      console.error("保存失败", err);
+      console.error(t("works.saveFailed"), err);
       const backendMessage =
         typeof err === "object" &&
         err !== null &&
@@ -347,9 +349,7 @@ export function WorkEditPage() {
           ? (err as { response?: { data?: { message?: string } } }).response!
               .data!.message!
           : "";
-      toast.error("保存失败", {
-        description: backendMessage || "请检查网络连接或稍后重试",
-      });
+      toast.error(backendMessage || t("works.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -370,8 +370,8 @@ export function WorkEditPage() {
       );
       setNewUploads((prev) => [...prev, ...next]);
     } catch (err) {
-      console.error("计算图片哈希失败", err);
-      toast.error("计算图片哈希失败，请重试");
+      console.error(t("works.uploadFailed"), err);
+      toast.error(t("works.uploadFailed"));
     }
   };
 
@@ -393,7 +393,7 @@ export function WorkEditPage() {
       });
 
       if (duplicateRes.data.code !== 0) {
-        toast.error(duplicateRes.data.message || "重复图片检查失败");
+        toast.error(duplicateRes.data.message || t("works.uploadFailed"));
         return false;
       }
 
@@ -406,8 +406,8 @@ export function WorkEditPage() {
       setDuplicateDialogOpen(true);
       return false;
     } catch (err) {
-      console.error("重复图片检查失败", err);
-      toast.error("重复图片检查失败");
+      console.error(t("works.uploadFailed"), err);
+      toast.error(t("works.uploadFailed"));
       return false;
     }
   };
@@ -499,7 +499,7 @@ export function WorkEditPage() {
     }
     if (aiMetadataEnabled) {
       if (!aiCheckpoint.trim() || !aiPrompt.trim()) {
-        toast.error("开启 AI 元数据时，CHECKPOINT 和 Prompt 为必填");
+        toast.error(t("aiMetadata.checkpointAndPromptRequired"));
         return;
       }
     }
@@ -542,12 +542,12 @@ export function WorkEditPage() {
         ),
       );
       setAIMetadataDialogOpen(false);
-      toast.success("AI 元数据已更新");
+      toast.success(t("aiMetadata.updateSuccess"));
       return;
     }
 
     if (!workId) {
-      toast.error("无效作品 ID");
+      toast.error(t("aiMetadata.invalidWorkId"));
       return;
     }
 
@@ -559,7 +559,7 @@ export function WorkEditPage() {
         metadata ?? null,
       );
       if (res.data.code !== 0) {
-        toast.error(res.data.message || "更新 AI 元数据失败");
+        toast.error(res.data.message || t("aiMetadata.updateFailed"));
         return;
       }
       setWork((prev) =>
@@ -578,10 +578,10 @@ export function WorkEditPage() {
           : prev,
       );
       setAIMetadataDialogOpen(false);
-      toast.success("AI 元数据已更新");
+      toast.success(t("aiMetadata.updateSuccess"));
     } catch (err) {
-      console.error("更新 AI 元数据失败", err);
-      toast.error("更新 AI 元数据失败");
+      console.error(t("aiMetadata.updateFailed"), err);
+      toast.error(t("aiMetadata.updateFailed"));
     }
   };
 
@@ -598,32 +598,34 @@ export function WorkEditPage() {
           : prev,
       );
       setImageOrder((prev) => prev.filter((id) => id !== imageId));
-      toast.success("图片已删除");
+      toast.success(t("works.deleteSuccess"));
     } catch (err) {
-      console.error("删除图片失败", err);
-      toast.error("删除图片失败");
+      console.error(t("works.deleteFailed"), err);
+      toast.error(t("works.deleteFailed"));
     }
   };
 
   if (loading) {
     return (
       <AdminLayout
-        title="作品编辑"
+        title={t("works.editWork")}
         breadcrumbs={
           isFromCollection && !isNew
             ? [
-                { label: "作品集管理", href: "/collections" },
+                { label: t("collections.title"), href: "/collections" },
                 { label: collectionNameFromSource, href: collectionWorksHref },
-                { label: isNew ? "新建作品" : "作品编辑" },
+                { label: isNew ? t("works.newWork") : t("works.editWork") },
               ]
             : [
-                { label: "作品管理", href: "/" },
-                { label: isNew ? "新建作品" : "作品编辑" },
+                { label: t("works.title"), href: "/" },
+                { label: isNew ? t("works.newWork") : t("works.editWork") },
               ]
         }
         onLogout={handleLogout}
       >
-        <div className="text-center text-muted-foreground">加载中...</div>
+        <div className="text-center text-muted-foreground">
+          {t("app.loading")}
+        </div>
       </AdminLayout>
     );
   }
@@ -631,38 +633,46 @@ export function WorkEditPage() {
   if (!isNew && !work) {
     return (
       <AdminLayout
-        title="作品编辑"
+        title={t("works.editWork")}
         breadcrumbs={
           isFromCollection
             ? [
-                { label: "作品集管理", href: "/collections" },
+                { label: t("collections.title"), href: "/collections" },
                 { label: collectionNameFromSource, href: collectionWorksHref },
-                { label: "作品编辑" },
+                { label: t("works.editWork") },
               ]
-            : [{ label: "作品管理", href: "/" }, { label: "作品编辑" }]
+            : [
+                { label: t("works.title"), href: "/" },
+                { label: t("works.editWork") },
+              ]
         }
         onLogout={handleLogout}
       >
-        <div className="text-center text-muted-foreground">作品不存在</div>
+        <div className="text-center text-muted-foreground">
+          {t("works.workNotFound")}
+        </div>
       </AdminLayout>
     );
   }
 
   return (
     <AdminLayout
-      title={isNew ? "新建作品" : "作品编辑"}
+      title={isNew ? t("works.newWork") : t("works.editWork")}
       breadcrumbs={
         isNew
-          ? [{ label: "作品管理", href: "/" }, { label: "新建作品" }]
+          ? [
+              { label: t("works.title"), href: "/" },
+              { label: t("works.newWork") },
+            ]
           : isFromCollection
             ? [
-                { label: "作品集管理", href: "/collections" },
+                { label: t("collections.title"), href: "/collections" },
                 { label: collectionNameFromSource, href: collectionWorksHref },
-                { label: work?.title || "作品编辑" },
+                { label: work?.title || t("works.editWork") },
               ]
             : [
-                { label: "作品管理", href: "/" },
-                { label: work?.title || "作品编辑" },
+                { label: t("works.title"), href: "/" },
+                { label: work?.title || t("works.editWork") },
               ]
       }
       onLogout={handleLogout}
@@ -693,12 +703,11 @@ export function WorkEditPage() {
                 onChange={(e) => handleFiles(e.target.files)}
               />
               <p className="text-sm text-muted-foreground">
-                {isDragging ? "释放以添加图片" : uploadHint}
+                {isDragging ? t("works.fields.dropToUpload") : uploadHint}
               </p>
               {!isNew && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  支持 PNG / JPG / GIF / WebP / BMP / TIFF / PSD / AI / HEIC /
-                  HEIF / AVIF
+                  {t("works.fields.supportedFormats")}
                 </p>
               )}
             </label>
@@ -707,7 +716,7 @@ export function WorkEditPage() {
           {!isNew && orderedImages.length > 0 && (
             <div className="bg-card border border-border rounded-lg p-4">
               <h3 className="text-sm font-medium text-foreground mb-3">
-                现有图片
+                {t("works.fields.existingImages")}
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {orderedImages.map((img, index) => (
@@ -717,7 +726,7 @@ export function WorkEditPage() {
                   >
                     <AuthImage
                       path={img.thumbnail_path}
-                      alt={work?.title || "图片"}
+                      alt={work?.title || t("common.noImage")}
                       className="w-full aspect-square object-cover"
                     />
                     <div className="flex items-center justify-between px-2 py-2 text-xs text-muted-foreground">
@@ -733,7 +742,7 @@ export function WorkEditPage() {
                           }
                           disabled={index === 0}
                         >
-                          上移
+                          {t("works.fields.moveUp")}
                         </Button>
                         <Button
                           variant="ghost"
@@ -746,7 +755,7 @@ export function WorkEditPage() {
                           }
                           disabled={index === orderedImages.length - 1}
                         >
-                          下移
+                          {t("works.fields.moveDown")}
                         </Button>
                         <Button
                           variant="ghost"
@@ -759,7 +768,7 @@ export function WorkEditPage() {
                           }
                         >
                           <Sparkles className="h-3.5 w-3.5 mr-1" />
-                          AI元数据
+                          AI
                         </Button>
                       </div>
                       <Button
@@ -767,7 +776,7 @@ export function WorkEditPage() {
                         size="xs"
                         onClick={() => handleDeleteImage(img.id)}
                       >
-                        删除
+                        {t("common.delete")}
                       </Button>
                     </div>
                   </div>
@@ -779,7 +788,7 @@ export function WorkEditPage() {
           {newUploads.length > 0 && (
             <div className="bg-card border border-border rounded-lg p-4">
               <h3 className="text-sm font-medium text-foreground mb-3">
-                待上传图片
+                {t("works.fields.pendingImages")}
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {newUploads.map((item, index) => (
@@ -789,7 +798,9 @@ export function WorkEditPage() {
                   >
                     {item.requiresTranscode ? (
                       <div className="w-full aspect-square bg-muted flex flex-col items-center justify-center text-muted-foreground">
-                        <span className="text-xs">待转码</span>
+                        <span className="text-xs">
+                          {t("works.fields.transcodePending")}
+                        </span>
                         <span className="text-[11px] mt-1">
                           {item.file.name}
                         </span>
@@ -812,7 +823,7 @@ export function WorkEditPage() {
                             }
                             disabled={index === 0}
                           >
-                            上移
+                            {t("works.fields.moveUp")}
                           </Button>
                           <Button
                             variant="ghost"
@@ -825,7 +836,7 @@ export function WorkEditPage() {
                             }
                             disabled={index === newUploads.length - 1}
                           >
-                            下移
+                            {t("works.fields.moveDown")}
                           </Button>
                           <Button
                             variant="ghost"
@@ -835,7 +846,7 @@ export function WorkEditPage() {
                             }
                           >
                             <Sparkles className="h-3.5 w-3.5 mr-1" />
-                            AI元数据
+                            AI
                           </Button>
                         </div>
                       ) : (
@@ -847,7 +858,7 @@ export function WorkEditPage() {
                           }
                         >
                           <Sparkles className="h-3.5 w-3.5 mr-1" />
-                          AI元数据
+                          AI
                         </Button>
                       )}
                       <Button
@@ -855,7 +866,7 @@ export function WorkEditPage() {
                         size="xs"
                         onClick={() => removeNewUpload(index)}
                       >
-                        删除
+                        {t("common.delete")}
                       </Button>
                     </div>
                   </div>
@@ -875,28 +886,28 @@ export function WorkEditPage() {
           <div className="bg-card border border-border rounded-lg p-4 space-y-4">
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                标题
+                {t("works.fields.title")}
               </label>
               <Input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="请输入作品标题"
+                placeholder={t("works.fields.titlePlaceholder")}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                描述
+                {t("works.fields.description")}
               </label>
               <Textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 rows={6}
-                placeholder="可选，支持 Markdown"
+                placeholder={t("works.fields.descriptionPlaceholder")}
               />
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                评分
+                {t("works.fields.rating")}
               </label>
               <div className="flex gap-2">
                 {[0, 1, 2, 3, 4, 5].map((value) => (
@@ -913,7 +924,7 @@ export function WorkEditPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                标签
+                {t("works.fields.tags")}
               </label>
               <div className="flex flex-wrap gap-2">
                 {tags.map((tag) => {
@@ -944,7 +955,7 @@ export function WorkEditPage() {
                 onCheckedChange={(checked) => setIsPublic(checked === true)}
               />
               <label htmlFor="publicSwitch" className="text-sm text-foreground">
-                公开展示
+                {t("works.fields.publicDisplay")}
               </label>
               <TooltipProvider>
                 <Tooltip>
@@ -954,13 +965,13 @@ export function WorkEditPage() {
                       variant="ghost"
                       size="icon"
                       className="h-5 w-5 rounded-full text-muted-foreground"
-                      aria-label="公开展示说明"
+                      aria-label={t("ariaLabels.publicDisplayHelp")}
                     >
                       <CircleHelp className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent side="top" sideOffset={6}>
-                    勾选后可通过公开接口访问该作品图片，便于外部页面嵌入展示。
+                    {t("works.fields.publicDisplayHelp")}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -971,7 +982,7 @@ export function WorkEditPage() {
                 disabled={!canSave}
                 className="flex-1"
               >
-                {saving ? "保存中..." : "保存"}
+                {saving ? t("common.saving") : t("common.save")}
               </Button>
               <Button
                 variant="outline"
@@ -982,7 +993,7 @@ export function WorkEditPage() {
                 }
                 className="flex-1"
               >
-                {isNew ? "取消" : "返回"}
+                {isNew ? t("common.cancel") : t("common.back")}
               </Button>
             </div>
           </div>
@@ -995,17 +1006,18 @@ export function WorkEditPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>检测到重复图片</AlertDialogTitle>
+            <AlertDialogTitle>{t("duplicateImages.title")}</AlertDialogTitle>
             <AlertDialogDescription>
-              新增图片中有 {duplicateImages.length} 张与已存在图片哈希一致。
-              {uniqueDuplicateWorkIDs.length > 0
-                ? `重复图片所在作品 ID：${uniqueDuplicateWorkIDs.join(", ")}`
-                : ""}
-              。您仍可继续保存。
+              {t("duplicateImages.description", {
+                count: duplicateImages.length,
+                workIds: uniqueDuplicateWorkIDs.join(", "),
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>返回检查</AlertDialogCancel>
+            <AlertDialogCancel>
+              {t("duplicateImages.backToCheck")}
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 setDuplicateDialogOpen(false);
@@ -1013,7 +1025,7 @@ export function WorkEditPage() {
                 void executeSave();
               }}
             >
-              继续保存
+              {t("duplicateImages.continueSave")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -1030,9 +1042,9 @@ export function WorkEditPage() {
       >
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>编辑 AI 元数据</DialogTitle>
+            <DialogTitle>{t("aiMetadata.editTitle")}</DialogTitle>
             <DialogDescription>
-              可选填写。开启后 CHECKPOINT 与 Prompt 为必填项。
+              {t("aiMetadata.editDescription")}
             </DialogDescription>
           </DialogHeader>
 
@@ -1049,7 +1061,7 @@ export function WorkEditPage() {
                 htmlFor="aiMetadataEnabled"
                 className="text-sm text-foreground"
               >
-                启用 AI 元数据
+                {t("aiMetadata.enabled")}
               </label>
             </div>
 
@@ -1057,50 +1069,50 @@ export function WorkEditPage() {
               <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    CHECKPOINT
+                    {t("aiMetadata.checkpoint")}
                   </label>
                   <Input
                     value={aiCheckpoint}
                     onChange={(e) => setAICheckpoint(e.target.value)}
-                    placeholder="模型名"
+                    placeholder={t("aiMetadata.checkpointPlaceholder")}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Prompt
+                    {t("aiMetadata.prompt")}
                   </label>
                   <Textarea
                     value={aiPrompt}
                     onChange={(e) => setAIPrompt(e.target.value)}
                     rows={4}
-                    placeholder="正向提示词"
+                    placeholder={t("aiMetadata.promptPlaceholder")}
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-foreground mb-2">
-                    Negative prompt
+                    {t("aiMetadata.negativePrompt")}
                   </label>
                   <Textarea
                     value={aiNegativePrompt}
                     onChange={(e) => setAINegativePrompt(e.target.value)}
                     rows={3}
-                    placeholder="负向提示词（可为空）"
+                    placeholder={t("aiMetadata.negativePromptPlaceholder")}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-medium text-foreground">
-                      Other metadata
+                      {t("aiMetadata.otherMetadata")}
                     </label>
                     <Button variant="outline" size="sm" onClick={addAIItem}>
                       <Plus className="h-4 w-4 mr-1" />
-                      添加
+                      {t("aiMetadata.addField")}
                     </Button>
                   </div>
                   {aiOtherMetadata.length === 0 ? (
                     <div className="text-xs text-muted-foreground">
-                      暂无自定义字段
+                      {t("aiMetadata.noCustomFields")}
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -1111,7 +1123,7 @@ export function WorkEditPage() {
                         >
                           <Input
                             className="col-span-3"
-                            placeholder="键名"
+                            placeholder={t("aiMetadata.keyPlaceholder")}
                             value={item.key}
                             onChange={(e) =>
                               updateAIItem(index, "key", e.target.value)
@@ -1119,7 +1131,7 @@ export function WorkEditPage() {
                           />
                           <Input
                             className="col-span-4"
-                            placeholder="值1"
+                            placeholder={t("aiMetadata.value1Placeholder")}
                             value={item.value1}
                             onChange={(e) =>
                               updateAIItem(index, "value1", e.target.value)
@@ -1127,7 +1139,7 @@ export function WorkEditPage() {
                           />
                           <Input
                             className="col-span-4"
-                            placeholder="值2(可选)"
+                            placeholder={t("aiMetadata.value2Placeholder")}
                             value={item.value2}
                             onChange={(e) =>
                               updateAIItem(index, "value2", e.target.value)
@@ -1155,9 +1167,9 @@ export function WorkEditPage() {
               variant="outline"
               onClick={() => setAIMetadataDialogOpen(false)}
             >
-              取消
+              {t("common.cancel")}
             </Button>
-            <Button onClick={saveAIMetadata}>保存</Button>
+            <Button onClick={saveAIMetadata}>{t("common.save")}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
