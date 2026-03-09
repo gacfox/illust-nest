@@ -77,6 +77,31 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 	Success(c, nil)
 }
 
+type ResetPasswordRequest struct {
+	NewPassword string `json:"new_password" binding:"required,min=6,max=100"`
+}
+
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	userID, exists := c.Get("user_id")
+	if !exists {
+		Unauthorized(c)
+		return
+	}
+
+	var req ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		BadRequest(c, err.Error())
+		return
+	}
+
+	if err := h.authService.ResetPassword(userID.(uint), req.NewPassword); err != nil {
+		UnauthorizedWithMessage(c, err.Error())
+		return
+	}
+
+	Success(c, nil)
+}
+
 func (h *AuthHandler) RefreshToken(c *gin.Context) {
 	userID, exists := c.Get("user_id")
 	if !exists {

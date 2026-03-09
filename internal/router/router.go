@@ -53,6 +53,7 @@ func Setup() *gin.Engine {
 		auth.POST("/login", authHandler.Login)
 		auth.GET("/me", middleware.Auth(), authHandler.Me)
 		auth.PUT("/password", middleware.Auth(), authHandler.ChangePassword)
+		auth.PUT("/reset-password", middleware.Auth(), authHandler.ResetPassword)
 		auth.POST("/refresh", middleware.Auth(), authHandler.RefreshToken)
 	}
 

@@ -4,6 +4,7 @@ import type {
   LoginRequest,
   LoginResponse,
   ChangePasswordRequest,
+  ResetPasswordRequest,
   User,
 } from "@/types/api";
 
@@ -15,6 +16,9 @@ export const authService = {
 
   changePassword: (data: ChangePasswordRequest) =>
     api.put<ApiResponse<void>>("/api/auth/password", data),
+
+  resetPassword: (data: ResetPasswordRequest) =>
+    api.put<ApiResponse<void>>("/api/auth/reset-password", data),
 
   refreshToken: () =>
     api.post<ApiResponse<{ token: string; expires_at: string }>>(

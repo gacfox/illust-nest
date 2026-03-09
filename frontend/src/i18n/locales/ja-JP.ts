@@ -337,6 +337,21 @@ export const jaJP = {
     languageZhTW: "繁體中文",
     languageEnUS: "English",
     languageJaJP: "日本語",
+    passwordSection: "パスワード管理",
+    changePassword: "パスワード変更",
+    newPassword: "新しいパスワード",
+    confirmPassword: "パスワード確認",
+    newPasswordPlaceholder: "新しいパスワードを入力（6文字以上）",
+    confirmPasswordPlaceholder: "新しいパスワードを再入力",
+    passwordMismatch: "パスワードが一致しません",
+    passwordMinLength: "パスワードは6文字以上である必要があります",
+    resetting: "リセット中...",
+    resetPassword: "パスワードをリセット",
+    resetPasswordSuccess:
+      "パスワードをリセットしました。再度ログインしてください",
+    resetPasswordFailed: "パスワードのリセットに失敗しました",
+    resetPasswordDescription:
+      "新しいパスワードを入力してください。リセット後は再度ログインが必要です。",
   },
   theme: {
     toggle: "テーマを切り替え",

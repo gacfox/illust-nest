@@ -2,14 +2,15 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { toast } from "sonner";
-import { systemService } from "@/services";
+import { systemService, authService } from "@/services";
 import { useAuthStore, useI18nStore, useSystemStore } from "@/stores";
 import type { SystemSettings } from "@/types/api";
-import { CircleHelp } from "lucide-react";
+import { CircleHelp, KeyRound } from "lucide-react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -23,6 +24,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export function SettingsPage() {
   const { t } = useTranslation();
@@ -42,6 +52,12 @@ export function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testingImageMagick, setTestingImageMagick] = useState(false);
+
+  // Password reset state
+  const [passwordDialogOpen, setPasswordDialogOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   useEffect(() => {
     if (systemSettings) {
@@ -111,6 +127,42 @@ export function SettingsPage() {
       toast.error(err.response?.data?.message || t("settings.testFailed"));
     } finally {
       setTestingImageMagick(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (newPassword.length < 6) {
+      toast.error(t("settings.passwordMinLength"));
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error(t("settings.passwordMismatch"));
+      return;
+    }
+
+    setResettingPassword(true);
+    try {
+      const res = await authService.resetPassword({
+        new_password: newPassword,
+      });
+      if (res.data.code === 0) {
+        toast.success(t("settings.resetPasswordSuccess"));
+        setPasswordDialogOpen(false);
+        setNewPassword("");
+        setConfirmPassword("");
+        // Clear auth and redirect to login
+        clearAuth();
+        localStorage.removeItem("token");
+        navigate("/login");
+      } else {
+        toast.error(res.data.message || t("settings.resetPasswordFailed"));
+      }
+    } catch (err: any) {
+      toast.error(
+        err.response?.data?.message || t("settings.resetPasswordFailed"),
+      );
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -306,6 +358,85 @@ export function SettingsPage() {
                   </Button>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-6">
+            <h2 className="text-lg font-medium text-foreground mb-4">
+              {t("settings.passwordSection")}
+            </h2>
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {t("settings.resetPasswordDescription")}
+              </p>
+              <Dialog
+                open={passwordDialogOpen}
+                onOpenChange={setPasswordDialogOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <KeyRound className="h-4 w-4" />
+                    {t("settings.changePassword")}
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{t("settings.resetPassword")}</DialogTitle>
+                    <DialogDescription>
+                      {t("settings.resetPasswordDescription")}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="new-password">
+                        {t("settings.newPassword")}
+                      </Label>
+                      <Input
+                        id="new-password"
+                        type="password"
+                        placeholder={t("settings.newPasswordPlaceholder")}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirm-password">
+                        {t("settings.confirmPassword")}
+                      </Label>
+                      <Input
+                        id="confirm-password"
+                        type="password"
+                        placeholder={t("settings.confirmPasswordPlaceholder")}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setPasswordDialogOpen(false);
+                        setNewPassword("");
+                        setConfirmPassword("");
+                      }}
+                      disabled={resettingPassword}
+                    >
+                      {t("common.cancel")}
+                    </Button>
+                    <Button
+                      onClick={handleResetPassword}
+                      disabled={
+                        resettingPassword || !newPassword || !confirmPassword
+                      }
+                    >
+                      {resettingPassword
+                        ? t("settings.resetting")
+                        : t("settings.resetPassword")}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </div>
           </div>
 
