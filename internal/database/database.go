@@ -10,17 +10,12 @@ import (
 	"strings"
 	"time"
 
-	"gorm.io/driver/sqlite"
+	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
-	_ "modernc.org/sqlite"
 )
 
-func openPureGoSQLite(dsn string) (*gorm.DB, error) {
-	dialector := sqlite.Dialector{
-		DSN:        dsn,
-		DriverName: "sqlite",
-	}
+func openSQLite(dsn string) (*gorm.DB, error) {
 	logger := gormlogger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags),
 		gormlogger.Config{
@@ -30,7 +25,7 @@ func openPureGoSQLite(dsn string) (*gorm.DB, error) {
 			Colorful:                  false,
 		},
 	)
-	return gorm.Open(&dialector, &gorm.Config{Logger: logger})
+	return gorm.Open(sqlite.Open(dsn), &gorm.Config{Logger: logger})
 }
 
 var DB *gorm.DB
@@ -68,7 +63,7 @@ func Init() error {
 	if err := ensureSQLiteDir(config.GlobalConfig.Database.Path); err != nil {
 		return fmt.Errorf("failed to create database directory: %w", err)
 	}
-	DB, err = openPureGoSQLite(config.GlobalConfig.Database.Path)
+	DB, err = openSQLite(config.GlobalConfig.Database.Path)
 	if err != nil {
 		return fmt.Errorf("failed to connect database: %w", err)
 	}
