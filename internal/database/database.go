@@ -13,6 +13,7 @@ import (
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	gormlogger "gorm.io/gorm/logger"
+	"gorm.io/gorm/schema"
 )
 
 func openSQLite(dsn string) (*gorm.DB, error) {
@@ -25,7 +26,12 @@ func openSQLite(dsn string) (*gorm.DB, error) {
 			Colorful:                  false,
 		},
 	)
-	return gorm.Open(sqlite.Open(dsn), &gorm.Config{Logger: logger})
+	return gorm.Open(sqlite.Open(dsn), &gorm.Config{
+		Logger: logger,
+		NamingStrategy: schema.NamingStrategy{
+			SingularTable: true,
+		},
+	})
 }
 
 var DB *gorm.DB
