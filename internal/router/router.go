@@ -2,22 +2,31 @@ package router
 
 import (
 	"context"
+	illustnest "illust-nest"
 	"illust-nest/internal/config"
 	"illust-nest/internal/database"
 	"illust-nest/internal/handler"
 	"illust-nest/internal/middleware"
 	"illust-nest/internal/repository"
 	"illust-nest/internal/service"
-	"illust-nest/internal/web"
 	"io"
+	"io/fs"
 	"mime"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 )
+
+var isEmbedded = len(getEmbeddedFS()) > 0
+
+func getEmbeddedFS() []fs.DirEntry {
+	entries, _ := illustnest.FrontendFiles.ReadDir("frontend/dist")
+	return entries
+}
 
 func Setup() *gin.Engine {
 	if config.GlobalConfig.Server.Mode == "release" {
@@ -239,31 +248,58 @@ func serveImage(c *gin.Context, logicalPrefix, rawPath string) {
 	_, _ = io.Copy(c.Writer, file)
 }
 
-var embedHandler *web.EmbedHandler
-
 func serveFrontend(c *gin.Context) {
 	if strings.HasPrefix(c.Request.URL.Path, "/api/") {
 		handler.NotFound(c)
 		return
 	}
 
-	if config.GlobalConfig.Web.Embed {
-		if embedHandler == nil {
-			var err error
-			embedHandler, err = web.NewEmbedHandler()
-			if err != nil {
-				c.String(http.StatusInternalServerError, "failed to initialize embed handler: %v", err)
-				return
-			}
-		}
-		embedHandler.Serve(c)
+	if isEmbedded {
+		serveEmbeddedFrontend(c)
+	} else {
+		serveStaticFrontend(c)
+	}
+}
+
+func serveEmbeddedFrontend(c *gin.Context) {
+	reqPath := strings.TrimPrefix(c.Request.URL.Path, "/")
+	reqPath = path.Clean(reqPath)
+	if reqPath == "." || reqPath == "" {
+		reqPath = "index.html"
+	}
+
+	sub, err := fs.Sub(illustnest.FrontendFiles, "frontend/dist")
+	if err != nil {
+		c.String(http.StatusInternalServerError, "failed to access embedded files")
 		return
 	}
 
-	staticRoot := strings.TrimSpace(config.GlobalConfig.Web.StaticDir)
-	if staticRoot == "" {
-		staticRoot = "./frontend/dist"
+	file, err := sub.Open(reqPath)
+	if err != nil || isPathDir(sub, reqPath) {
+		reqPath = "index.html"
+		file, err = sub.Open(reqPath)
+		if err != nil {
+			c.String(http.StatusNotFound, "frontend index not found")
+			return
+		}
 	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		c.String(http.StatusInternalServerError, "failed to read file")
+		return
+	}
+
+	contentType := getContentType(reqPath)
+	c.Header("Content-Type", contentType)
+	c.Header("Cache-Control", "max-age=31536000")
+	c.Status(http.StatusOK)
+	c.Writer.Write(content)
+}
+
+func serveStaticFrontend(c *gin.Context) {
+	staticRoot := "./frontend/dist"
 
 	staticRootAbs, err := filepath.Abs(staticRoot)
 	if err != nil {
@@ -295,4 +331,43 @@ func serveFrontend(c *gin.Context) {
 		return
 	}
 	c.File(indexPath)
+}
+
+func isPathDir(sub fs.FS, reqPath string) bool {
+	info, err := fs.Stat(sub, reqPath)
+	return err != nil || info.IsDir()
+}
+
+func getContentType(filePath string) string {
+	ext := strings.ToLower(filepath.Ext(filePath))
+	switch ext {
+	case ".html":
+		return "text/html"
+	case ".js":
+		return "application/javascript"
+	case ".css":
+		return "text/css"
+	case ".json":
+		return "application/json"
+	case ".png":
+		return "image/png"
+	case ".jpg", ".jpeg":
+		return "image/jpeg"
+	case ".gif":
+		return "image/gif"
+	case ".svg":
+		return "image/svg+xml"
+	case ".ico":
+		return "image/x-icon"
+	case ".woff":
+		return "font/woff"
+	case ".woff2":
+		return "font/woff2"
+	case ".ttf":
+		return "font/ttf"
+	case ".eot":
+		return "application/vnd.ms-fontobject"
+	default:
+		return "application/octet-stream"
+	}
 }

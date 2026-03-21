@@ -11,7 +11,6 @@ type Config struct {
 	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
 	JWT      JWTConfig      `yaml:"jwt"`
-	Web      WebConfig      `yaml:"web"`
 	Storage  StorageConfig  `yaml:"storage"`
 }
 
@@ -28,11 +27,6 @@ type DatabaseConfig struct {
 type JWTConfig struct {
 	Secret      string `yaml:"secret"`
 	ExpireHours int    `yaml:"expire_hours"`
-}
-
-type WebConfig struct {
-	StaticDir string `yaml:"static_dir"`
-	Embed     bool   `yaml:"embed"`
 }
 
 type StorageConfig struct {
@@ -73,10 +67,6 @@ func Load(configPath string) error {
 
 	if err := yaml.Unmarshal(data, &GlobalConfig); err != nil {
 		return fmt.Errorf("failed to parse config file: %w", err)
-	}
-
-	if GlobalConfig.Web.StaticDir == "" {
-		GlobalConfig.Web.StaticDir = "./frontend/dist"
 	}
 	if len(GlobalConfig.Storage.Providers) == 0 {
 		GlobalConfig.Storage.Providers = []StorageProviderItem{

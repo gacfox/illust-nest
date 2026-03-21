@@ -34,7 +34,3 @@ storage:
       webdav_username: ""
       webdav_password: ""
       webdav_prefix: ""
-
-web:
-  static_dir: ./frontend/dist
-  embed: true

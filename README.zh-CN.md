@@ -59,17 +59,16 @@ go build -tags debug -o ./bin/illust-nest ./cmd/server/ && ./bin/illust-nest
 # 1. 构建前端
 cd frontend && npm install && npm run build
 
-# 2. 复制前端产物到 embed 目录
-cp -r frontend/dist/* internal/web/dist/
-
-# 3. 构建后端
+# 2. 构建后端
 go build -o ./bin/illust-nest ./cmd/server/
 
-# 4. 启动服务
-GIN_MODE=release && ./bin/illust-nest
+# 3. 启动服务
+GIN_MODE=release ./bin/illust-nest
 ```
 
 部署模式下，前端静态文件已嵌入到二进制文件中，服务端会自动处理SPA路由回退，访问`8080`即可打开页面。
+
+**注意：**必须先构建前端再构建后端，因为 Go embed 要求`frontend/dist`目录在编译时存在。
 
 ## 配置说明
 
@@ -110,10 +109,6 @@ storage:
       webdav_username: "root"
       webdav_password: "abcd1234"
       webdav_prefix: "illust-nest"
-
-web:
-  static_dir: ./frontend/dist # 静态资源文件夹的路径（embed=false时使用）
-  embed: true # 是否将前端嵌入到二进制文件中，嵌入后static_dir就不再生效了，生产部署一般用这种方式
 ```
 
 ## ImageMagick集成

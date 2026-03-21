@@ -61,17 +61,16 @@ Production build embeds frontend assets into the binary executable.
 # 1. Build frontend
 cd frontend && npm install && npm run build
 
-# 2. Copy frontend artifacts to embed directory
-cp -r frontend/dist/* internal/web/dist/
-
-# 3. Build backend
+# 2. Build backend
 go build -o ./bin/illust-nest ./cmd/server/
 
-# 4. Start service
-GIN_MODE=release && ./bin/illust-nest
+# 3. Start service
+GIN_MODE=release ./bin/illust-nest
 ```
 
 In deployment mode, frontend static files are embedded in the binary. The server automatically handles SPA route fallback. Access port `8080` to open the page.
+
+**Note:** The frontend must be built before the backend, as Go embed requires the `frontend/dist` directory to exist during compilation.
 
 ## Configuration
 
@@ -112,10 +111,6 @@ storage:
       webdav_username: "root"
       webdav_password: "abcd1234"
       webdav_prefix: "illust-nest"
-
-web:
-  static_dir: ./frontend/dist # Static resources folder path (used when embed=false)
-  embed: true # Whether to embed frontend into binary. When embedded, static_dir is ignored. Typically used for production deployment
 ```
 
 ## ImageMagick Integration
