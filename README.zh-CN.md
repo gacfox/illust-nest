@@ -68,7 +68,7 @@ GIN_MODE=release ./bin/illust-nest
 
 部署模式下，前端静态文件已嵌入到二进制文件中，服务端会自动处理SPA路由回退，访问`8080`即可打开页面。
 
-**注意：**必须先构建前端再构建后端，因为 Go embed 要求`frontend/dist`目录在编译时存在。
+注意：必须先构建前端再构建后端，因为 Go embed 要求`frontend/dist`目录在编译时存在。
 
 ## 配置说明
 
