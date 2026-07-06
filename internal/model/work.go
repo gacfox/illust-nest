@@ -12,7 +12,7 @@ type Work struct {
 	UpdatedAt   time.Time `json:"updated_at"`
 
 	Images     []WorkImage `gorm:"foreignKey:WorkID" json:"images"`
-	Tags       []Tag       `gorm:"many2many:work_tags" json:"tags,omitempty"`
+	Tags       []Tag       `gorm:"many2many:work_tag" json:"tags,omitempty"`
 	CoverImage WorkImage   `gorm:"-" json:"cover_image,omitempty"`
 	ImageCount int         `gorm:"-" json:"image_count,omitempty"`
 }

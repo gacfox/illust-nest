@@ -81,9 +81,9 @@ func (r *WorkRepository) FindAll(params map[string]interface{}, page, pageSize i
 	}
 
 	if tagIDs, ok := params["tag_ids"].([]uint); ok && len(tagIDs) > 0 {
-		query = query.Joins("JOIN work_tags ON work_tags.work_id = works.id").
-			Where("work_tags.tag_id IN ?", tagIDs).
-			Group("works.id")
+		query = query.Joins("JOIN work_tag ON work_tag.work_id = work.id").
+			Where("work_tag.tag_id IN ?", tagIDs).
+			Group("work.id")
 	}
 
 	if ratingMin, ok := params["rating_min"].(int); ok {
@@ -257,33 +257,33 @@ func (r *WorkRepository) FindByCollectionID(collectionID uint, params map[string
 	var total int64
 
 	query := r.DB.Model(&model.Work{}).
-		Joins("JOIN collection_works ON collection_works.work_id = works.id").
-		Where("collection_works.collection_id = ?", collectionID).
+		Joins("JOIN collection_work ON collection_work.work_id = work.id").
+		Where("collection_work.collection_id = ?", collectionID).
 		Preload("Images", func(db *gorm.DB) *gorm.DB {
 			return db.Order("sort_order ASC")
 		}).
 		Preload("Tags")
 
 	if keyword, ok := params["keyword"].(string); ok && keyword != "" {
-		query = query.Where("works.title LIKE ? OR works.description LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
+		query = query.Where("work.title LIKE ? OR work.description LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
 	}
 
 	if tagIDs, ok := params["tag_ids"].([]uint); ok && len(tagIDs) > 0 {
-		query = query.Joins("JOIN work_tags ON work_tags.work_id = works.id").
-			Where("work_tags.tag_id IN ?", tagIDs).
-			Group("works.id")
+		query = query.Joins("JOIN work_tag ON work_tag.work_id = work.id").
+			Where("work_tag.tag_id IN ?", tagIDs).
+			Group("work.id")
 	}
 
 	if ratingMin, ok := params["rating_min"].(int); ok {
-		query = query.Where("works.rating >= ?", ratingMin)
+		query = query.Where("work.rating >= ?", ratingMin)
 	}
 
 	if ratingMax, ok := params["rating_max"].(int); ok {
-		query = query.Where("works.rating <= ?", ratingMax)
+		query = query.Where("work.rating <= ?", ratingMax)
 	}
 
 	if isPublic, ok := params["is_public"].(bool); ok {
-		query = query.Where("works.is_public = ?", isPublic)
+		query = query.Where("work.is_public = ?", isPublic)
 	}
 
 	result := query.Count(&total)
@@ -292,7 +292,7 @@ func (r *WorkRepository) FindByCollectionID(collectionID uint, params map[string
 	}
 
 	offset := (page - 1) * pageSize
-	if err := query.Order("collection_works.sort_order ASC").Offset(offset).Limit(pageSize).Find(&works).Error; err != nil {
+	if err := query.Order("collection_work.sort_order ASC").Offset(offset).Limit(pageSize).Find(&works).Error; err != nil {
 		return nil, 0, err
 	}
 
@@ -326,7 +326,7 @@ func (r *WorkRepository) FindDuplicateImageHashCounts() ([]DuplicateImageHashCou
 func (r *WorkRepository) FindAllForExport() ([]model.Work, error) {
 	var works []model.Work
 	err := r.DB.Model(&model.Work{}).
-		Order("works.created_at ASC, works.id ASC").
+		Order("work.created_at ASC, work.id ASC").
 		Preload("Images", func(db *gorm.DB) *gorm.DB {
 			return db.Order("sort_order ASC")
 		}).
@@ -338,13 +338,13 @@ func (r *WorkRepository) FindAllForExport() ([]model.Work, error) {
 func (r *WorkRepository) IsPublicImagePath(path string, isThumbnail bool) (bool, error) {
 	var count int64
 	query := r.DB.Model(&model.WorkImage{}).
-		Joins("JOIN works ON works.id = work_images.work_id").
-		Where("works.is_public = ?", true)
+		Joins("JOIN work ON work.id = work_image.work_id").
+		Where("work.is_public = ?", true)
 
 	if isThumbnail {
-		query = query.Where("work_images.thumbnail_path = ?", path)
+		query = query.Where("work_image.thumbnail_path = ?", path)
 	} else {
-		query = query.Where("(work_images.storage_path = ? OR work_images.transcoded_path = ?)", path, path)
+		query = query.Where("(work_image.storage_path = ? OR work_image.transcoded_path = ?)", path, path)
 	}
 
 	err := query.Count(&count).Error
