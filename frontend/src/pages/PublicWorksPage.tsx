@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { ArrowDown, ArrowUp, Search, SlidersHorizontal, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Search, SlidersHorizontal, X, Ban } from "lucide-react";
 
 import { PublicLayout } from "@/components/PublicLayout";
 import { WorkCard } from "@/components/WorkCard";
@@ -30,7 +30,8 @@ export function PublicWorksPage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [keyword, setKeyword] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
-  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [includedTagIds, setIncludedTagIds] = useState<number[]>([]);
+  const [excludedTagIds, setExcludedTagIds] = useState<number[]>([]);
   const [ratingMin, setRatingMin] = useState(0);
   const [ratingMax, setRatingMax] = useState(5);
   const [sortBy, setSortBy] = useState("created_at");
@@ -68,8 +69,10 @@ export function PublicWorksPage() {
           page: pageNum,
           page_size: 20,
           keyword: keyword.trim() || undefined,
-          tag_ids:
-            selectedTagIds.length > 0 ? selectedTagIds.join(",") : undefined,
+          include_tag_ids:
+            includedTagIds.length > 0 ? includedTagIds.join(",") : undefined,
+          exclude_tag_ids:
+            excludedTagIds.length > 0 ? excludedTagIds.join(",") : undefined,
           rating_min: ratingMin,
           rating_max: ratingMax,
           sort_by: sortBy,
@@ -96,7 +99,8 @@ export function PublicWorksPage() {
     },
     [
       keyword,
-      selectedTagIds,
+      includedTagIds,
+      excludedTagIds,
       ratingMin,
       ratingMax,
       sortBy,
@@ -152,7 +156,8 @@ export function PublicWorksPage() {
 
   const handleResetFilters = () => {
     setKeyword("");
-    setSelectedTagIds([]);
+    setIncludedTagIds([]);
+    setExcludedTagIds([]);
     setRatingMin(0);
     setRatingMax(5);
     setSortBy("created_at");
@@ -160,9 +165,27 @@ export function PublicWorksPage() {
     loadWorks(1, false);
   };
 
+  const toggleTag = (tagId: number, mode: "include" | "exclude") => {
+    if (mode === "include") {
+      setIncludedTagIds((prev) =>
+        prev.includes(tagId)
+          ? prev.filter((id) => id !== tagId)
+          : [...prev, tagId],
+      );
+      setExcludedTagIds((prev) => prev.filter((id) => id !== tagId));
+    } else {
+      setExcludedTagIds((prev) =>
+        prev.includes(tagId)
+          ? prev.filter((id) => id !== tagId)
+          : [...prev, tagId],
+      );
+      setIncludedTagIds((prev) => prev.filter((id) => id !== tagId));
+    }
+  };
+
   const filteredTagCount = useMemo(
-    () => selectedTagIds.length,
-    [selectedTagIds],
+    () => includedTagIds.length + excludedTagIds.length,
+    [includedTagIds, excludedTagIds],
   );
 
   return (
@@ -217,27 +240,42 @@ export function PublicWorksPage() {
 
         {filterOpen && (
           <div className="bg-card border border-border rounded-lg p-4 space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {tags.map((tag) => {
-                const selected = selectedTagIds.includes(tag.id);
-                return (
-                  <Button
-                    key={tag.id}
-                    variant={selected ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => {
-                      setSelectedTagIds((prev) =>
-                        selected
-                          ? prev.filter((id) => id !== tag.id)
-                          : [...prev, tag.id],
-                      );
-                    }}
-                    className="rounded-full text-xs"
-                  >
-                    {tag.name}
-                  </Button>
-                );
-              })}
+            <div className="space-y-3">
+              <div>
+                <span className="text-sm font-medium text-foreground">
+                  {t("tags.filterByTags")}
+                </span>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {tags.map((tag) => {
+                    const isIncluded = includedTagIds.includes(tag.id);
+                    const isExcluded = excludedTagIds.includes(tag.id);
+                    return (
+                      <div
+                        key={tag.id}
+                        className="inline-flex rounded-full overflow-hidden border border-border"
+                      >
+                        <Button
+                          variant={isIncluded ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => toggleTag(tag.id, "include")}
+                          className="rounded-r-none text-xs border-0"
+                        >
+                          {tag.name}
+                        </Button>
+                        <Button
+                          variant={isExcluded ? "destructive" : "outline"}
+                          size="sm"
+                          onClick={() => toggleTag(tag.id, "exclude")}
+                          className="rounded-l-none text-xs border-0 px-2"
+                          aria-label={t("tags.excludeTags")}
+                        >
+                          <Ban className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
             <div className="flex flex-wrap gap-4">
               <div className="flex items-center gap-2">

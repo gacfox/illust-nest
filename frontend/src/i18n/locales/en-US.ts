@@ -248,6 +248,9 @@ export const enUS = {
     create: "New Tag",
     noTags: "No tags",
     searchPlaceholder: "Search tags",
+    includeTags: "Include tags",
+    excludeTags: "Exclude tags",
+    filterByTags: "Filter by tags",
     fields: {
       name: "Tag Name",
       namePlaceholder: "Enter tag name, supports Chinese, English, and numbers",

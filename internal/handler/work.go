@@ -64,24 +64,33 @@ func (h *WorkHandler) List(c *gin.Context) {
 		}
 	}
 
-	var tagIDs []uint
-	if t := c.Query("tag_ids"); t != "" {
+	var includeTagIDs []uint
+	if t := c.Query("include_tag_ids"); t != "" {
 		ids, err := h.workService.ParseTagIDs(t)
 		if err == nil {
-			tagIDs = ids
+			includeTagIDs = ids
+		}
+	}
+
+	var excludeTagIDs []uint
+	if t := c.Query("exclude_tag_ids"); t != "" {
+		ids, err := h.workService.ParseTagIDs(t)
+		if err == nil {
+			excludeTagIDs = ids
 		}
 	}
 
 	params := &service.WorkListParams{
-		Page:      page,
-		PageSize:  pageSize,
-		Keyword:   c.Query("keyword"),
-		TagIDs:    tagIDs,
-		RatingMin: ratingMin,
-		RatingMax: ratingMax,
-		IsPublic:  isPublic,
-		SortBy:    c.DefaultQuery("sort_by", "created_at"),
-		SortOrder: c.DefaultQuery("sort_order", "desc"),
+		Page:          page,
+		PageSize:      pageSize,
+		Keyword:       c.Query("keyword"),
+		IncludeTagIDs: includeTagIDs,
+		ExcludeTagIDs: excludeTagIDs,
+		RatingMin:     ratingMin,
+		RatingMax:     ratingMax,
+		IsPublic:      isPublic,
+		SortBy:        c.DefaultQuery("sort_by", "created_at"),
+		SortOrder:     c.DefaultQuery("sort_order", "desc"),
 	}
 
 	result, err := h.workService.GetWorks(params)

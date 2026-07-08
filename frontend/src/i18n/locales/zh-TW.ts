@@ -241,6 +241,9 @@ export const zhTW = {
     create: "新建標籤",
     noTags: "暫無標籤",
     searchPlaceholder: "搜尋標籤",
+    includeTags: "包含標籤",
+    excludeTags: "排除標籤",
+    filterByTags: "標籤篩選",
     fields: {
       name: "標籤名稱",
       namePlaceholder: "請輸入標籤名稱，支援中文、英文、數字",

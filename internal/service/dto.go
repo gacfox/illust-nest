@@ -105,15 +105,16 @@ type UpdateWorkRequest struct {
 }
 
 type WorkListParams struct {
-	Page      int
-	PageSize  int
-	Keyword   string
-	TagIDs    []uint
-	RatingMin int
-	RatingMax int
-	IsPublic  *bool
-	SortBy    string
-	SortOrder string
+	Page          int
+	PageSize      int
+	Keyword       string
+	IncludeTagIDs []uint
+	ExcludeTagIDs []uint
+	RatingMin     int
+	RatingMax     int
+	IsPublic      *bool
+	SortBy        string
+	SortOrder     string
 }
 
 type WorkPagedResult struct {

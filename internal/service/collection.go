@@ -64,8 +64,11 @@ func (s *CollectionService) GetCollectionWorks(id uint, params *WorkListParams) 
 	if params.Keyword != "" {
 		repoParams["keyword"] = params.Keyword
 	}
-	if len(params.TagIDs) > 0 {
-		repoParams["tag_ids"] = params.TagIDs
+	if len(params.IncludeTagIDs) > 0 {
+		repoParams["include_tag_ids"] = params.IncludeTagIDs
+	}
+	if len(params.ExcludeTagIDs) > 0 {
+		repoParams["exclude_tag_ids"] = params.ExcludeTagIDs
 	}
 	if params.RatingMin >= 0 {
 		repoParams["rating_min"] = params.RatingMin

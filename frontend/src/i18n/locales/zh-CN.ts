@@ -241,6 +241,9 @@ export const zhCN = {
     create: "新建标签",
     noTags: "暂无标签",
     searchPlaceholder: "搜索标签",
+    includeTags: "包括标签",
+    excludeTags: "排除标签",
+    filterByTags: "标签筛选",
     fields: {
       name: "标签名称",
       namePlaceholder: "请输入标签名称，支持中文、英文、数字",

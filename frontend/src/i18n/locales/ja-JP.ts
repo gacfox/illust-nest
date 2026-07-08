@@ -247,6 +247,9 @@ export const jaJP = {
     create: "新規タグ",
     noTags: "タグがありません",
     searchPlaceholder: "タグを検索",
+    includeTags: "含めるタグ",
+    excludeTags: "除外するタグ",
+    filterByTags: "タグで絞り込む",
     fields: {
       name: "タグ名",
       namePlaceholder: "タグ名を入力、日本語・英語・数字対応",

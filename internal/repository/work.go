@@ -80,10 +80,14 @@ func (r *WorkRepository) FindAll(params map[string]interface{}, page, pageSize i
 		query = query.Where("title LIKE ? OR description LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
 	}
 
-	if tagIDs, ok := params["tag_ids"].([]uint); ok && len(tagIDs) > 0 {
+	if includeTagIDs, ok := params["include_tag_ids"].([]uint); ok && len(includeTagIDs) > 0 {
 		query = query.Joins("JOIN work_tag ON work_tag.work_id = work.id").
-			Where("work_tag.tag_id IN ?", tagIDs).
+			Where("work_tag.tag_id IN ?", includeTagIDs).
 			Group("work.id")
+	}
+
+	if excludeTagIDs, ok := params["exclude_tag_ids"].([]uint); ok && len(excludeTagIDs) > 0 {
+		query = query.Where("NOT EXISTS (SELECT 1 FROM work_tag WHERE work_tag.work_id = work.id AND work_tag.tag_id IN ?)", excludeTagIDs)
 	}
 
 	if ratingMin, ok := params["rating_min"].(int); ok {
@@ -268,10 +272,14 @@ func (r *WorkRepository) FindByCollectionID(collectionID uint, params map[string
 		query = query.Where("work.title LIKE ? OR work.description LIKE ?", "%"+keyword+"%", "%"+keyword+"%")
 	}
 
-	if tagIDs, ok := params["tag_ids"].([]uint); ok && len(tagIDs) > 0 {
+	if includeTagIDs, ok := params["include_tag_ids"].([]uint); ok && len(includeTagIDs) > 0 {
 		query = query.Joins("JOIN work_tag ON work_tag.work_id = work.id").
-			Where("work_tag.tag_id IN ?", tagIDs).
+			Where("work_tag.tag_id IN ?", includeTagIDs).
 			Group("work.id")
+	}
+
+	if excludeTagIDs, ok := params["exclude_tag_ids"].([]uint); ok && len(excludeTagIDs) > 0 {
+		query = query.Where("NOT EXISTS (SELECT 1 FROM work_tag WHERE work_tag.work_id = work.id AND work_tag.tag_id IN ?)", excludeTagIDs)
 	}
 
 	if ratingMin, ok := params["rating_min"].(int); ok {

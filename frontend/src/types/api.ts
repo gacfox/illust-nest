@@ -163,7 +163,8 @@ export interface WorkListParams {
   page?: number;
   page_size?: number;
   keyword?: string;
-  tag_ids?: number[] | string;
+  include_tag_ids?: number[] | string;
+  exclude_tag_ids?: number[] | string;
   rating_min?: number;
   rating_max?: number;
   is_public?: boolean;
