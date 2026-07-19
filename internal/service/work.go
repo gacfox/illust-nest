@@ -164,8 +164,8 @@ func (s *WorkService) UpdateWork(id uint, req *UpdateWorkRequest) (*WorkInfo, er
 	if req.Title != "" {
 		work.Title = req.Title
 	}
-	if req.Description != "" {
-		work.Description = req.Description
+	if req.Description != nil {
+		work.Description = *req.Description
 	}
 	if req.Rating >= 0 {
 		work.Rating = req.Rating

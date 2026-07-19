@@ -98,10 +98,10 @@ type CreateWorkRequest struct {
 
 type UpdateWorkRequest struct {
 	Title       string `json:"title" binding:"max=200"`
-	Description string `json:"description"`
-	Rating      int    `json:"rating" binding:"min=0,max=5"`
-	IsPublic    *bool  `json:"is_public"`
-	TagIDs      []uint `json:"tag_ids"`
+	Description *string `json:"description"`
+	Rating      int     `json:"rating" binding:"min=0,max=5"`
+	IsPublic    *bool   `json:"is_public"`
+	TagIDs      []uint  `json:"tag_ids"`
 }
 
 type WorkListParams struct {
@@ -171,9 +171,9 @@ type CreateCollectionRequest struct {
 }
 
 type UpdateCollectionRequest struct {
-	Name        string `json:"name" binding:"min=1,max=100"`
-	Description string `json:"description"`
-	ParentID    *uint  `json:"parent_id,omitempty"`
+	Name        string  `json:"name" binding:"min=1,max=100"`
+	Description *string `json:"description"`
+	ParentID    *uint   `json:"parent_id,omitempty"`
 }
 
 type CollectionInfo struct {

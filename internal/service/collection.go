@@ -142,8 +142,8 @@ func (s *CollectionService) UpdateCollection(id uint, req *UpdateCollectionReque
 	if req.Name != "" {
 		collection.Name = req.Name
 	}
-	if req.Description != "" {
-		collection.Description = req.Description
+	if req.Description != nil {
+		collection.Description = *req.Description
 	}
 	if err := s.collectionRepo.Update(collection); err != nil {
 		return nil, err
