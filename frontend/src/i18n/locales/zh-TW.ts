@@ -131,6 +131,7 @@ export const zhTW = {
       dropToUpload: "釋放以新增圖片",
       supportedFormats:
         "支援 PNG / JPG / GIF / WebP / BMP / TIFF / PSD / AI / HEIC / HEIF / AVIF",
+      unsupportedFiles: "已忽略 {{count}} 個不支援的檔案",
       transcodePending: "待轉碼",
     },
   },

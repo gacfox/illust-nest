@@ -132,6 +132,7 @@ export const jaJP = {
       dropToUpload: "ドロップして画像を追加",
       supportedFormats:
         "PNG / JPG / GIF / WebP / BMP / TIFF / PSD / AI / HEIC / HEIF / AVIF 対応",
+      unsupportedFiles: "対応していないファイル {{count}} 件をスキップしました",
       transcodePending: "変換待ち",
     },
   },

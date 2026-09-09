@@ -177,17 +177,7 @@ export function WorkEditPage() {
     e.stopPropagation();
     setIsDragging(false);
 
-    const droppedFiles = e.dataTransfer.files;
-    if (droppedFiles.length > 0) {
-      const imageFiles = Array.from(droppedFiles).filter((file) =>
-        isSupportedUploadFile(file),
-      );
-      if (imageFiles.length === 0) {
-        toast.error(t("works.fields.dropToUpload"));
-        return;
-      }
-      handleFiles(imageFiles);
-    }
+    handleFiles(e.dataTransfer.files);
   };
 
   const handleLogout = () => {
@@ -197,10 +187,26 @@ export function WorkEditPage() {
   };
 
   const handleFiles = (files: FileList | File[] | null) => {
-    if (!files) {
+    if (!files || files.length === 0) {
       return;
     }
-    void appendUploadsWithHash(Array.from(files));
+    const supportedFiles: File[] = [];
+    let rejectedCount = 0;
+    Array.from(files).forEach((file) => {
+      if (isSupportedUploadFile(file)) {
+        supportedFiles.push(file);
+      } else {
+        rejectedCount += 1;
+      }
+    });
+    if (rejectedCount > 0) {
+      toast.error(
+        t("works.fields.unsupportedFiles", { count: rejectedCount }),
+      );
+    }
+    if (supportedFiles.length > 0) {
+      void appendUploadsWithHash(supportedFiles);
+    }
   };
 
   const removeNewUpload = (index: number) => {
@@ -698,18 +704,19 @@ export function WorkEditPage() {
                 id="imageUpload"
                 type="file"
                 multiple
-                accept="image/*,.psd,.ai,.heic,.heif,.avif"
+                accept="image/png,image/jpeg,image/gif,image/webp,image/bmp,image/tiff,image/avif,.psd,.ai,.heic,.heif"
                 className="hidden"
-                onChange={(e) => handleFiles(e.target.files)}
+                onChange={(e) => {
+                  handleFiles(e.target.files);
+                  e.target.value = "";
+                }}
               />
               <p className="text-sm text-muted-foreground">
                 {isDragging ? t("works.fields.dropToUpload") : uploadHint}
               </p>
-              {!isNew && (
-                <p className="text-xs text-muted-foreground mt-1">
-                  {t("works.fields.supportedFormats")}
-                </p>
-              )}
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("works.fields.supportedFormats")}
+              </p>
             </label>
           </div>
 
@@ -1223,22 +1230,51 @@ function shouldShowTranscodePlaceholder(file: File): boolean {
   );
 }
 
+const SUPPORTED_UPLOAD_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/bmp",
+  "image/x-ms-bmp",
+  "image/tiff",
+  "image/psd",
+  "image/x-psd",
+  "image/photoshop",
+  "image/x-photoshop",
+  "application/photoshop",
+  "application/x-photoshop",
+  "application/psd",
+  "application/postscript",
+  "application/illustrator",
+  "image/heic",
+  "image/heif",
+  "image/avif",
+]);
+
+const SUPPORTED_UPLOAD_EXTENSIONS = new Set([
+  "jpg",
+  "jpeg",
+  "png",
+  "gif",
+  "webp",
+  "bmp",
+  "dib",
+  "tif",
+  "tiff",
+  "psd",
+  "ai",
+  "heic",
+  "heif",
+  "avif",
+]);
+
 function isSupportedUploadFile(file: File): boolean {
   const mime = file.type.toLowerCase();
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
-  if (mime.startsWith("image/")) {
+  if (SUPPORTED_UPLOAD_MIME_TYPES.has(mime)) {
     return true;
   }
-  return (
-    ext === "psd" ||
-    ext === "ai" ||
-    ext === "heic" ||
-    ext === "heif" ||
-    ext === "avif" ||
-    mime === "application/photoshop" ||
-    mime === "application/x-photoshop" ||
-    mime === "application/psd" ||
-    mime === "application/postscript" ||
-    mime === "application/illustrator"
-  );
+  // 部分文件（如 PSD/HEIC）浏览器可能无法识别 MIME，回退到扩展名判断
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  return SUPPORTED_UPLOAD_EXTENSIONS.has(ext);
 }

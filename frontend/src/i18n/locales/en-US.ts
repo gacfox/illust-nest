@@ -133,6 +133,7 @@ export const enUS = {
       dropToUpload: "Drop to add images",
       supportedFormats:
         "Supports PNG / JPG / GIF / WebP / BMP / TIFF / PSD / AI / HEIC / HEIF / AVIF",
+      unsupportedFiles: "Skipped {{count}} unsupported file(s)",
       transcodePending: "Pending transcode",
     },
   },

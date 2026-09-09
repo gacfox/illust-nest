@@ -131,6 +131,7 @@ export const zhCN = {
       dropToUpload: "释放以添加图片",
       supportedFormats:
         "支持 PNG / JPG / GIF / WebP / BMP / TIFF / PSD / AI / HEIC / HEIF / AVIF",
+      unsupportedFiles: "已忽略 {{count}} 个不支持的文件",
       transcodePending: "待转码",
     },
   },
