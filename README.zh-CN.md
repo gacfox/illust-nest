@@ -70,6 +70,55 @@ GIN_MODE=release ./bin/illust-nest
 
 注意：必须先构建前端再构建后端，因为 Go embed 要求`frontend/dist`目录在编译时存在。
 
+### 使用 systemd 管理服务
+
+在 Linux 服务器（包括树莓派）上，可以使用 systemd 管理 Illust Nest 服务。
+
+1. 创建专用用户并部署文件：
+
+```bash
+sudo useradd -r -s /usr/sbin/nologin illust
+sudo mkdir -p /opt/illust-nest
+sudo cp -r bin/illust-nest config /opt/illust-nest/
+sudo chown -R illust:illust /opt/illust-nest
+```
+
+2. 创建服务单元文件`/etc/systemd/system/illust-nest.service`：
+
+```ini
+[Unit]
+Description=Illust Nest
+After=network.target
+
+[Service]
+Type=simple
+User=illust
+Group=illust
+WorkingDirectory=/opt/illust-nest
+Environment=GIN_MODE=release
+# 可选：使用绝对路径指定配置文件，替代默认的 ./config/config.prod.yaml
+# Environment=CONFIG_FILE=/etc/illust-nest/config.yaml
+ExecStart=/opt/illust-nest/bin/illust-nest
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+3. 启用并启动服务：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now illust-nest
+
+# 查看状态和日志
+sudo systemctl status illust-nest
+journalctl -u illust-nest -f
+```
+
+注意：配置文件（`./config/config.prod.yaml`）、数据库和本地上传目录（`./data/`）均相对于`WorkingDirectory`解析，请确保服务账户对部署目录有读写权限。
+
 ## 配置说明
 
 配置文件根据环境变量设置加载，`GIN_MODE=release`时默认加载`config/config.prod.yaml`，否则默认加载`config/config.dev.yaml`。此外也可通过环境变量`CONFIG_FILE`指定自定义配置文件路径。

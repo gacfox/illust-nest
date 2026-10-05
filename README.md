@@ -72,6 +72,55 @@ In deployment mode, frontend static files are embedded in the binary. The server
 
 **Note:** The frontend must be built before the backend, as Go embed requires the `frontend/dist` directory to exist during compilation.
 
+### Running as a systemd Service
+
+On Linux servers (including Raspberry Pi), you can manage Illust Nest with systemd.
+
+1. Create a dedicated user and deploy the files:
+
+```bash
+sudo useradd -r -s /usr/sbin/nologin illust
+sudo mkdir -p /opt/illust-nest
+sudo cp -r bin/illust-nest config /opt/illust-nest/
+sudo chown -R illust:illust /opt/illust-nest
+```
+
+2. Create the unit file `/etc/systemd/system/illust-nest.service`:
+
+```ini
+[Unit]
+Description=Illust Nest
+After=network.target
+
+[Service]
+Type=simple
+User=illust
+Group=illust
+WorkingDirectory=/opt/illust-nest
+Environment=GIN_MODE=release
+# Optional: use an absolute config path instead of ./config/config.prod.yaml
+# Environment=CONFIG_FILE=/etc/illust-nest/config.yaml
+ExecStart=/opt/illust-nest/bin/illust-nest
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+3. Enable and start the service:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now illust-nest
+
+# Check status and logs
+sudo systemctl status illust-nest
+journalctl -u illust-nest -f
+```
+
+**Note:** The config file (`./config/config.prod.yaml`), database, and local uploads (`./data/`) are resolved relative to `WorkingDirectory`. Make sure the service user has read/write access to the deployment directory.
+
 ## Configuration
 
 Configuration files are loaded based on environment variables. When `GIN_MODE=release`, `config/config.prod.yaml` is loaded by default; otherwise `config/config.dev.yaml`. You can also specify a custom config file path via the `CONFIG_FILE` environment variable.
