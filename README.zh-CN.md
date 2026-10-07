@@ -2,7 +2,7 @@
 
 超轻量级、自托管的单用户插画和照片图库管理系统，适合部署在树莓派、NAS或云主机上。
 
-![截图](doc/1.webp)
+![截图](https://github.com/user-attachments/assets/76aefb47-610d-41ee-9230-3e6749a21190)
 
 ## 核心特性
 

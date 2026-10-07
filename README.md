@@ -4,7 +4,7 @@ A lightweight, self-hosted single-user illustration and photo gallery management
 
 [中文文档](README.zh-CN.md)
 
-![Screenshot](doc/1.webp)
+![Screenshot](https://github.com/user-attachments/assets/76aefb47-610d-41ee-9230-3e6749a21190)
 
 ## Core Features
 
