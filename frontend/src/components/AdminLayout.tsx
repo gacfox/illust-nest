@@ -124,9 +124,11 @@ export function AdminLayout({
         <header className="border-b border-border bg-card">
           <div className="mx-auto flex h-14 w-full max-w-7xl items-center justify-between px-4 sm:px-6">
             <Link to="/public/works" className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-md bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
-                IN
-              </div>
+              <img
+                src="/logo.png"
+                alt={siteTitle}
+                className="h-7 w-7 rounded-md object-contain"
+              />
               <span className="text-sm font-semibold">{siteTitle}</span>
             </Link>
             <div className="text-sm text-muted-foreground">{title}</div>
@@ -238,9 +240,11 @@ export function AdminLayout({
         >
           <div className="h-16 flex items-center justify-between px-4">
             <div className="flex items-center gap-2 overflow-hidden">
-              <div className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
-                IN
-              </div>
+              <img
+                src="/logo.png"
+                alt={siteTitle}
+                className="h-8 w-8 rounded-md object-contain"
+              />
               {!collapsed && <span className="font-semibold">{siteTitle}</span>}
             </div>
             <Button
