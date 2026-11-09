@@ -238,15 +238,6 @@ func (r *WorkRepository) FindImageCount(workID uint) (int64, error) {
 	return count, err
 }
 
-func (r *WorkRepository) FindFirstOrDefaultImage(workID uint) (*model.WorkImage, error) {
-	var image model.WorkImage
-	err := r.DB.Where("work_id = ?", workID).Order("sort_order ASC").First(&image).Error
-	if err != nil {
-		return nil, err
-	}
-	return &image, nil
-}
-
 func (r *WorkRepository) FindImageByID(workID, imageID uint) (*model.WorkImage, error) {
 	var image model.WorkImage
 	err := r.DB.Where("work_id = ? AND id = ?", workID, imageID).First(&image).Error

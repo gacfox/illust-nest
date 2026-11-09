@@ -510,6 +510,10 @@ func (h *WorkHandler) DeleteImage(c *gin.Context) {
 	}
 
 	if err := h.workService.DeleteImage(uint(id), uint(imageID)); err != nil {
+		if errors.Is(err, service.ErrImageNotFound) {
+			NotFound(c)
+			return
+		}
 		if errors.Is(err, service.ErrWorkNotFound) || errors.Is(err, service.ErrCannotDeleteLastImage) {
 			BadRequest(c, err.Error())
 		} else {

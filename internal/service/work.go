@@ -284,9 +284,9 @@ func (s *WorkService) DeleteImage(workID, imageID uint) error {
 		return ErrCannotDeleteLastImage
 	}
 
-	image, err := s.workRepo.FindFirstOrDefaultImage(workID)
+	image, err := s.workRepo.FindImageByID(workID, imageID)
 	if err != nil {
-		return err
+		return ErrImageNotFound
 	}
 
 	if err := s.imageService.DeleteImage(image.StoragePath, image.ThumbnailPath, image.TranscodedPath); err != nil {
